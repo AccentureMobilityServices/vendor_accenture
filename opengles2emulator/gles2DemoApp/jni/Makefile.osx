@@ -1,0 +1,15 @@
+OBJS=main.o gl_code.cpp globject.cpp 
+CC=g++
+CFLAGS=-g 
+LD=g++ 
+
+all: $(OBJS)
+	$(LD) $(OBJS) -o gl2demo -framework OpenGL -framework GLUT
+.c.o:
+	gcc $(CFLAGS) $(INCLUDES) -c $<  -o $@
+.cpp.o:
+	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
+clean:
+	@echo Cleaning up...
+	@rm -f $(OBJS) gl2demo 
+	@echo Done.
