@@ -35,7 +35,7 @@
 
 
 //#define DEBUG 1
-#if DEBUG
+#ifdef DEBUG
 #  define  DBGPRINT(...) printk(__VA_ARGS__)
 #else
 #  define  DBGPRINT(...) ((void)0)
@@ -377,6 +377,7 @@ static long
 goldfish_virtualDevice_ioctl (struct file *fp, unsigned int cmd_in, unsigned long arg)
 {
 	unsigned long irq_flags;
+	unsigned int result;
 
         struct virtual_device_data *v_drv_data=fp->private_data;
         struct goldfish_virtualDevice *data = v_drv_data->g_virtualDevice;
@@ -392,10 +393,6 @@ goldfish_virtualDevice_ioctl (struct file *fp, unsigned int cmd_in, unsigned lon
 
 	switch(cmd_in)
 	{
-		case VIRTUALDEVICE_IOCTL_ALLOCATE_SHAREDMEM:
-			DBGPRINT("    (more) : -> command is VIRTUALDEVICE_IOCTL_ALLOCATE_SHAREDMEM, size: %d\n", (int)arg);
-			break;
-
 		case VIRTUALDEVICE_IOCTL_SYSTEM_RESET:
 			DBGPRINT("    (more) : -> command is VIRTUALDEVICE_IOCTL_SYSTEM_RESET\n");
 			spin_lock_irqsave (&data->lock, irq_flags);
@@ -403,11 +400,20 @@ goldfish_virtualDevice_ioctl (struct file *fp, unsigned int cmd_in, unsigned lon
 			spin_unlock_irqrestore (&data->lock, irq_flags);
 			break;
 
-		case VIRTUALDEVICE_IOCTL_GRALLOC_ALLOCATED_REGION_INFO:
-			DBGPRINT("    (more) : -> command is VIRTUALDEVICE_IOCTL_GRALLOC_ALLOCATED_REGION_INFO\n");
+		case VIRTUALDEVICE_HOST_COMMAND_REGION_WRITE_DONE:
+			DBGPRINT("    (more) : -> command is VIRTUALDEVICE_HOST_COMMAND_REGION_WRITE_DONE\n");
 			spin_lock_irqsave (&data->lock, irq_flags);
-			GOLDFISH_VIRTUALDEVICE_WRITE(data, VIRTUALDEVICE_IOCTL_GRALLOC_ALLOCATED_REGION_INFO, arg);
+			result = GOLDFISH_VIRTUALDEVICE_READ(data, VIRTUALDEVICE_HOST_COMMAND_REGION_WRITE_DONE);
 			spin_unlock_irqrestore (&data->lock, irq_flags);
+			return result;
+			break;
+
+		case VIRTUALDEVICE_IOCTL_HOST_COMMAND_SYNC:
+			DBGPRINT("    (more) : -> command is VIRTUALDEVICE_IOCTL_HOST_COMMAND_SYNC\n");
+			spin_lock_irqsave (&data->lock, irq_flags);
+			result = GOLDFISH_VIRTUALDEVICE_READ(data, VIRTUALDEVICE_HOST_COMMAND_REGION_WRITE_DONE);
+			spin_unlock_irqrestore (&data->lock, irq_flags);
+			return result;
 			break;
 
 		case VIRTUALDEVICE_IOCTL_SIGNAL_BUFFER_SYNC:
@@ -491,10 +497,10 @@ static int goldfish_mmap (struct file *filp, struct vm_area_struct *vma)
 	char *address;
 
 
-     mutex_lock (&virtualDevice_mutex);
+    mutex_lock (&virtualDevice_mutex);
 
 	DBGPRINT("[INFO (%s)] : Mmap requested, size: %d, file: %s pd: %pd\n",__FUNCTION__, size, filp->f_path.dentry->d_name.name, filp->f_path.dentry);
-        DBGPRINT("    (more) : File * %p, Sequence id: %d, Current file count: %lu\n", filp, v_drv_data->seq_id, file_count(filp));	
+    DBGPRINT("    (more) : File * %p, Sequence id: %d, Current file count: %lu\n", filp, v_drv_data->seq_id, file_count(filp));	
 
     address = hostNativeOpenGL_getContiguousAddrFromInit();
 
@@ -513,6 +519,9 @@ static int goldfish_mmap (struct file *filp, struct vm_area_struct *vma)
 		    mutex_unlock (&virtualDevice_mutex);
 			return -EIO;
 		}
+
+//		memset((offset += data->theMemoryPool[v_drv_data->memPoolIndex].theAddressOffset), 0xff, size);
+
 		listMemPoolTotalFree(data->theMemoryPool, data->numOfAllocatedSegs);
 	}
 
@@ -527,6 +536,8 @@ static int goldfish_mmap (struct file *filp, struct vm_area_struct *vma)
     offset_phy = virt_to_phys((void *)offset);
 
 	v_drv_data->region_physical_address_start = offset_phy;
+
+	if (v_drv_data->seq_id == 0) memset((void *)offset, 0x00, size);		// Clear memory on first allocation, do it after page align :P
 
     offset_pg = offset_phy >> PAGE_SHIFT;
      DBGPRINT("    (more) : Offset is 0x%x address is 0x%x , vmoffset is 0x%x,size is 0x%d offset_pg 0x%x\n", (unsigned int)offset, (unsigned int)address, (unsigned int)vma->vm_pgoff, (unsigned int)vma->vm_end - (unsigned int)vma->vm_start, (unsigned int)offset_pg );

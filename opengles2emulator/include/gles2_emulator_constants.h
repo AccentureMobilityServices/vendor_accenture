@@ -25,6 +25,7 @@
 // Virtual device ID
 #define theVirtualDeviceFilename "/dev/virtual_device"
 #define theVirtualDeviceIOCTLFilename "/dev/virtual_device_control"
+#define theVirtualDeviceExchangeFilename "/dev/virtual_device_exchange"
 
 // Host Buffer Size - This is the buffer of commands which are shared with the host
 #define HostBufferSize 1048576 //1MB
@@ -46,9 +47,9 @@ enum sharedBuffer_commands {
 	VIRTUALDEVICE_OUTPUT_BUFFER_1_AVAILABLE = 36,
 	VIRTUALDEVICE_OUTPUT_BUFFER_2_AVAILABLE = 40,
 	VIRTUALDEVICE_START_INPUT = 44,
-	VIRTUALDEVICE_IOCTL_ALLOCATE_SHAREDMEM = 48,
+	VIRTUALDEVICE_IOCTL_HOST_COMMAND_SYNC = 48,
 	VIRTUALDEVICE_IOCTL_SYSTEM_RESET = 52,
-	VIRTUALDEVICE_IOCTL_GRALLOC_ALLOCATED_REGION_INFO = 56,
+	VIRTUALDEVICE_HOST_COMMAND_REGION_WRITE_DONE = 56,
 	VIRTUALDEVICE_IOCTL_SIGNAL_BUFFER_SYNC = 60,
 	VIRTUALDEVICE_IOCTL_REGION_PHYSICAL_ADDR_START = 64,
 };
@@ -65,6 +66,13 @@ enum sharedBuffer_interrupt_mask {
 	VIRTUALDEVICE_INT_MASK = VIRTUALDEVICE_INT_INPUT_BUFFER_1_FULL |  VIRTUALDEVICE_INT_INPUT_BUFFER_2_FULL |
 	VIRTUALDEVICE_INT_OUTPUT_BUFFER_1_EMPTY |  VIRTUALDEVICE_INT_OUTPUT_BUFFER_2_EMPTY,
 }; 
+
+/* Host commands. */
+enum host_commands {
+	HOST_COMMAND_RESET = 8,
+	HOST_COMMAND_REGION_WRITE_DONE = 9,
+	HOST_COMMAND_SYNC = 10,
+};
 
 
 typedef enum _pixel_format {
@@ -153,6 +161,7 @@ GLVIEWPORT,
 GLENABLE,
 GLDISABLE
 };
+
 
 
 enum egl_commands {
