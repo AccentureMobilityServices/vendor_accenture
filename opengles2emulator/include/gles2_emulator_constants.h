@@ -152,8 +152,13 @@ GLUNIFORMMATRIX4FV,
 GLVIEWPORT,
 GLENABLE,
 GLDISABLE
+};
 
 
+enum egl_commands {
+	EGL_SURFACE = 1,
+	EGL_DESTROYCONTEXT =2,
+	EGL_SYNC = 3
 };
 
 struct command_control
@@ -161,7 +166,7 @@ struct command_control
 	int virtualDeviceMagicNumber;
     int length;                        
 	int command;
-	int sequenceNum;
+	int context;
 	int glFunction;
 };
 

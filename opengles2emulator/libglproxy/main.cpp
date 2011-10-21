@@ -16,9 +16,10 @@
 */
 
 
+#include <unistd.h>
 #include "GLRenderer.h"
 #include <unistd.h>
-#include <GL/glut.h>
+#include "glheaders.h" 
 
 GLRenderer* render;
 
@@ -29,26 +30,29 @@ void eventloop ( void )
 	render->GLEventLoop();
 }
 
-void display ( void )   // Create The Display Function
+// Display function is unused - we render from the commands coming in
+void display ( void )  
 {
-	glutSwapBuffers();
 }
 
-void startGLProxy (void*)   // Create Main Function For Bringing It All Together
+void startGLProxy (void*)  
 {
 	render = new GLRenderer();
 	
 	int argc = 1;
-	char *argv[1];
+	char * argv[1];
 	argv[0] = "libglproxy";	
 	glutInit            ( &argc, argv );
-	glutInitDisplayMode ( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH); // Display Mode
-	glutInitWindowSize  ( 320, 480 ); // If glutFullScreen wasn't called this is the window size
+	// Choose a double buffered RGBA context with a depth buffer enabled
+	glutInitDisplayMode ( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+	glutInitWindowSize  ( 320, 480 ); 
 	
-	glutCreateWindow    ( "GLProxy" ); // Window Title (argv[0] for current directory as title)
+	glutCreateWindow    ( "GLProxy" ); 
+	glutHideWindow();
 	render->initializeGL();
-	render->GLEventLoop();
-
+	glutDisplayFunc     ( display );  
+	glutIdleFunc	  ( eventloop );
+	glutMainLoop        ( );          
 }
 
 

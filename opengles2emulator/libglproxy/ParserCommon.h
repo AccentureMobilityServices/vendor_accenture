@@ -18,7 +18,7 @@
 #define PARSERCOMMON_H_
 
 #include <stdio.h>
-#include <GL/gl.h>
+#include "glheaders.h" 
 
 typedef GLclampf GLclampfValue;
 typedef GLclampf GLclampxValue;

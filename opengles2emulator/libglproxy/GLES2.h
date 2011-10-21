@@ -17,10 +17,7 @@
 #ifndef GLES2_H_
 #define GLES2_H_
 #include <stdio.h>
-#define GL_GLEXT_PROTOTYPES
-#include <GL/gl.h>
-#include <GL/glext.h>
-#include <GL/glut.h>
+#include "glheaders.h"
 
 int parse_glCreateProgram(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
 int parse_glCreateShader(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
@@ -41,5 +38,6 @@ int parse_glUniform3fv(void *theBufferAddress, unsigned int *locationInBuffer, i
 int parse_glDisable(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
 int parse_glEnable(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
 int parse_glDrawElements(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
+int parse_glViewport(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
 
 #endif /* GLES2_H_ */

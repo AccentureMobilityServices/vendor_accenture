@@ -77,7 +77,7 @@ int initOpenGLES2Parser(void)
 	parserGLES2FunctionPointers[GLUNIFORMMATRIX4FV] = parse_glUniformMatrix4fv;
 	parserGLES2FunctionPointers[GLDISABLE] = parse_glDisable;
 	parserGLES2FunctionPointers[GLENABLE] = parse_glEnable;
-
+	parserGLES2FunctionPointers[GLVIEWPORT] = parse_glViewport;
 	return 0;
 
 }

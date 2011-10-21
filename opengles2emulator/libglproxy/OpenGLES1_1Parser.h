@@ -19,7 +19,7 @@
 #define OPENGLES1_1PARSER_H_
 
 #include <stdio.h>
-#include <GL/gl.h>
+#include "glheaders.h"
 #include "ParserCommon.h"
 
 #define NUMBER_OF_GLES1_1_POINTERS 256

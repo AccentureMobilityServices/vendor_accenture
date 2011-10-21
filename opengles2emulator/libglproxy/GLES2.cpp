@@ -57,6 +57,7 @@ AttribPointer* findAttribute(GLint index, bool createIfNecessary) {
 
 
 	}
+	return ptr;
 }
 
 int getDataSize(GLenum type) 
@@ -135,10 +136,7 @@ GLuint getToken(GLuint token) {
 
 int parse_glCreateProgram(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
 {
-	//		GLbitfield testField;
-
 	DBG_PRINT("(%s)\n", __FUNCTION__);
-	//		glClear(fetch_GLbitfield_32(theBufferAddress, locationInBuffer, bufferSize));
 	GLuint token = fetch_GLuint(theBufferAddress, locationInBuffer, bufferSize);
 	int programName = glCreateProgram();
 	showError();
@@ -153,8 +151,8 @@ int parse_glCreateShader(void *theBufferAddress, unsigned int *locationInBuffer,
 	GLenum shaderType = fetch_GLenum(theBufferAddress, locationInBuffer, bufferSize);
 	GLuint token = fetch_GLuint(theBufferAddress, locationInBuffer, bufferSize);
 	int shader = glCreateShader(shaderType);
-	showError();
 	setToken(token, shader);
+	showError();
 	return 0;
 }
 
@@ -169,12 +167,13 @@ int parse_glShaderSource(void *theBufferAddress, unsigned int *locationInBuffer,
 	for (i=0;i<count;i++) {
 		GLint len = fetch_GLint(theBufferAddress, locationInBuffer, bufferSize);
 		lengths[i] = len;
-		strings[i] = new GLchar[len];
+		strings[i] = new GLchar[len+1];
 		GLchar* str = fetch_GLstring(theBufferAddress, locationInBuffer, bufferSize, len);
 		memcpy(strings[i],str,len);
-		DBG_PRINT("%d %s\n", len, strings[i]);
+		strings[i][len] = '\0';
+		
 		removeIncompatibleElements(strings[i]);
-		DBG_PRINT("clean: %d %s\n", len, strings[i]);
+		DBG_PRINT("length: %d\n%s\n", len, strings[i]);
 	}
 	glShaderSource(getToken(shader), count, (const GLchar**)strings, lengths);
 	showError();
@@ -208,7 +207,7 @@ int parse_glVertexAttribPointer(void *theBufferAddress, unsigned int *locationIn
 	ptr->normalized = fetch_GLuint(theBufferAddress, locationInBuffer, bufferSize);		
 	ptr->stride = fetch_GLsizei(theBufferAddress, locationInBuffer, bufferSize);		
 	ptr->length = fetch_GLint(theBufferAddress, locationInBuffer, bufferSize);		
-	DBG_PRINT("pointer %08x\n", ptr->pointer);
+	DBG_PRINT("pointer %08x\n",(unsigned int) ptr->pointer);
 	ptr->pointer = realloc(ptr->pointer, ptr->length);
 	fetchBufferWrappedBytes(theBufferAddress, locationInBuffer, bufferSize, (void*)ptr->pointer, ptr->length);
 	float* data = (float*)ptr->pointer;
@@ -266,14 +265,17 @@ int parse_glUniformMatrix4fv(void *theBufferAddress, unsigned int *locationInBuf
 int parse_glEnableVertexAttribArray(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
-	DBG_PRINT("not used\n");
+	GLuint index = fetch_GLuint(theBufferAddress, locationInBuffer, bufferSize);
+	glEnableVertexAttribArray(getToken(index));		
+	showError();
 	return 0;
 }
 int parse_glLinkProgram(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint program = fetch_GLuint(theBufferAddress, locationInBuffer, bufferSize);
-	glLinkProgram(getToken(program));		
+	GLuint realProgram = getToken(program);
+	glLinkProgram(realProgram);		
 	showError();
 	return 0;
 }
@@ -312,7 +314,7 @@ int parse_glGetAttribLocation(void *theBufferAddress, unsigned int *locationInBu
 	GLuint realProgram = getToken(program);
 	setToken(token, glGetAttribLocation(realProgram,name));
 	showError();
-	free(name);
+	delete[]name;
 
 	return 0;
 }
@@ -329,7 +331,7 @@ int parse_glGetUniformLocation(void *theBufferAddress, unsigned int *locationInB
 	GLuint realProgram = getToken(program);
 	setToken(token, glGetUniformLocation(realProgram,name));
 	showError();
-	free(name);
+	delete[]name;
 
 	return 0;
 }
@@ -384,6 +386,25 @@ int parse_glDisable(void *theBufferAddress, unsigned int *locationInBuffer, int 
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum cap = fetch_GLenum(theBufferAddress, locationInBuffer, bufferSize);
 	glDisable(cap);
+	showError();
+	return 0;
+}
+
+int parse_glViewport(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
+{
+	DBG_PRINT("(%s)\n", __FUNCTION__);
+	GLuint x;
+	GLuint y;
+	GLsizei w;
+	GLsizei h;
+	x = fetch_GLuint(theBufferAddress, locationInBuffer, bufferSize);
+	y = fetch_GLuint(theBufferAddress, locationInBuffer, bufferSize);
+	w = fetch_GLuint(theBufferAddress, locationInBuffer, bufferSize);
+	h = fetch_GLuint(theBufferAddress, locationInBuffer, bufferSize);
+
+	DBG_PRINT("viewport %d %d %d %d\n",x,y,w,h);
+
+	glViewport(x,y,w,h);
 	showError();
 	return 0;
 }

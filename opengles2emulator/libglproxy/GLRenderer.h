@@ -17,73 +17,73 @@
 
 #ifndef GLRENDERER_H_
 #define GLRENDERER_H_
-#include <GL/gl.h>
+#include "glheaders.h"
+#include "glproxy_context.h"
 #include "PosixSemaphore.h"
 #include "PosixSharedMemory.h"
-#include <string.h>
+#include "IPC_Messaging.h"
+#include <string>
+#include <vector>
+
+using namespace std;
 
 class GLRenderer
 {
 
-	typedef struct
+
+
+	struct
 	{
-		int	surfaceEnumerator;
-		int pid;
-		unsigned int surfacePhysicalAddress;
-		unsigned int surfaceVirtualAddress;
-		unsigned int width;
-		unsigned int height;
-		int pixelFormat;
-		int pixelType;
-		unsigned int stride;
-	} theSurfaceStruct;
+		GLenum target;
+		GLint level;
+		GLint internalformat;
+		GLsizei width;
+		GLsizei height;
+		GLint border;
+		GLenum format;
+		GLenum type;
+		const GLvoid *pixels;
+	} theglTexImage2Dstruct;
 
-	  struct
-	  {
-		  GLenum target;
-		  GLint level;
-		  GLint internalformat;
-		  GLsizei width;
-		  GLsizei height;
-		  GLint border;
-		  GLenum format;
-		  GLenum type;
-		  const GLvoid *pixels;
-	  } theglTexImage2Dstruct;
-
-public:
+ public:
 	GLRenderer();
 	virtual ~GLRenderer();
 
-    void initializeGL();
-    void resizeGL(int width, int height);
-    int testReset();
+	void initializeGL();
+	void resizeGL(int width, int height);
+	int testReset();
+	int sendReset();
 	void GLEventLoop();
-private:
+
+	GLproxyContext* findContext(int contextID);
+	void deleteContext(int contextID);
+ private:
 
 	int initializeSharedMemory();
-	void tranferGLImageBufferFlipped_Y(char *sourceBuffer, char *addressBase, theSurfaceStruct *thisSurface);
-	  GLfloat oneColour, xRotation, yRotation, zRotation;
-	  PosixSemaphore *thePosixSemaphore;
-	  PosixSemaphore *theResetSemaphore;
-	  PosixSharedMemory *thePosixSharedMemory;
-	  PosixSharedMemory *theAndroidSharedMemory;
+	void transferGLImageBufferFlipped_Y(char *addressBase, theSurfaceStruct *thisSurface);
+	GLfloat oneColour, xRotation, yRotation, zRotation;
+	PosixSemaphore *thePosixSemaphore;
+	PosixSemaphore *theResetSemaphore;
+	PosixSharedMemory *thePosixSharedMemory;
+	PosixSharedMemory *theAndroidSharedMemory;
+	vector<GLproxyContext*> glcontexts;
 
-	  unsigned int currentBufferPointer;
-	  int theMagicNumber, theGLcommand;
+	unsigned int currentBufferPointer;
+	int theMagicNumber, theGLcommand;
 
-	  int * theBufferPointer;
-	  GLclampf *theGLclampfValue;
-	  GLclampf *theGLclampxValue;
-	  GLbitfield *theGLbitfieldValue;
+	int * theBufferPointer;
+	GLclampf *theGLclampfValue;
+	GLclampf *theGLclampxValue;
+	GLbitfield *theGLbitfieldValue;
 
 	GLuint fb;
 	GLuint color_rb;
-      GLuint pbufferList;
-      GLuint cubeTexture;
+	GLuint pbufferList;
+	GLuint cubeTexture;
 
 	void *theCopyBuffer;
 	theSurfaceStruct theSurfaces[2];
+	IPC_Messaging* theOutputIPCMessageQueue;
 
 	int viewportWidth, viewportHeight;
 };
