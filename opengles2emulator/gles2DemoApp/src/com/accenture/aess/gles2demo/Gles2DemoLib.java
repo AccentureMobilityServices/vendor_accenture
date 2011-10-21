@@ -30,7 +30,7 @@ public class Gles2DemoLib {
      * @param height the current view height
      */
      public static native void init(int width, int height);
-     public static native void step();
+     public static native void step(float rotX, float rotY, float rotZ);
      public static native void setShaders(String vertexShader, String fragmentShader);
      public static native void loadModel(byte[] model);
      public static native void shutdown();

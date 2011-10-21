@@ -14,6 +14,7 @@
 #include <OpenGL/gl.h>
 #include <GLUT/glut.h>
 #define  LOG_TAG    "gl2Demo"
+#define  LOGV(...)  printf(__VA_ARGS__);;printf("\n");
 #define  LOGI(...)  printf(__VA_ARGS__);printf("\n");
 #define  LOGE(...)  printf(__VA_ARGS__);printf("\n");
 #else
@@ -22,6 +23,7 @@
 #include <GL/glext.h>
 #include <GL/glut.h>
 #define  LOG_TAG    "gl2Demo"
+#define  LOGV(...)  printf(__VA_ARGS__);;printf("\n");
 #define  LOGI(...)  printf(__VA_ARGS__);printf("\n");
 #define  LOGE(...)  printf(__VA_ARGS__);;printf("\n");
 #endif

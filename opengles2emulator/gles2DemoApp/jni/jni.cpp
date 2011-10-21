@@ -21,7 +21,7 @@
 #include "globject.h"
 
 bool setupGraphics(int, int);
-void renderFrame();
+void renderFrame(float, float, float);
 void shutdown();
 void setShaders(const char* vertexShader, const char* fragmentShader);
 void setModel(const char* objfile);
@@ -29,7 +29,7 @@ void setModel(const char* objfile);
 
 extern "C" {
     JNIEXPORT void JNICALL Java_com_accenture_aess_gles2demo_Gles2DemoLib_init(JNIEnv * env, jobject obj,  jint width, jint height);
-    JNIEXPORT void JNICALL Java_com_accenture_aess_gles2demo_Gles2DemoLib_step(JNIEnv * env, jobject obj);
+    JNIEXPORT void JNICALL Java_com_accenture_aess_gles2demo_Gles2DemoLib_step(JNIEnv * env, jobject obj, jfloat rotX, jfloat rotY, jfloat rotZ);
     JNIEXPORT void JNICALL Java_com_accenture_aess_gles2demo_Gles2DemoLib_setShaders(JNIEnv * env, jobject obj,  jstring vsh, jstring fsh);
     JNIEXPORT void JNICALL Java_com_accenture_aess_gles2demo_Gles2DemoLib_loadModel(JNIEnv * env, jobject obj,  jbyteArray model);
     JNIEXPORT void JNICALL Java_com_accenture_aess_gles2demo_Gles2DemoLib_shutdown(JNIEnv * env, jobject obj);
@@ -40,9 +40,9 @@ JNIEXPORT void JNICALL Java_com_accenture_aess_gles2demo_Gles2DemoLib_init(JNIEn
     setupGraphics(width, height);
 }
 
-JNIEXPORT void JNICALL Java_com_accenture_aess_gles2demo_Gles2DemoLib_step(JNIEnv * env, jobject obj)
+JNIEXPORT void JNICALL Java_com_accenture_aess_gles2demo_Gles2DemoLib_step(JNIEnv * env, jobject obj, jfloat rotX, jfloat rotY, jfloat rotZ)
 {
-    renderFrame();
+    renderFrame(rotX, rotY, rotZ);
 }
 JNIEXPORT void JNICALL Java_com_accenture_aess_gles2demo_Gles2DemoLib_shutdown(JNIEnv * env, jobject obj)
 {

@@ -181,7 +181,7 @@ bool setupGraphics(int w, int h) {
 
     glViewport(0, 0, w, h);
 	aspectRatio = (float)h/(float)w;
-	glFrontFace(GL_CW);
+	glFrontFace(GL_CCW);
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
     checkGlError("glViewport");
@@ -209,14 +209,14 @@ GLfloat gProjMatrix[16];
 const GLfloat lightDirection[]={0,0,-1};
 GLfloat rot = 25.0f;
 
-void renderFrame() {
+void renderFrame(float rotX, float rotY, float rotZ) {
     static float grey;
     grey = 0.3f;
 
 	if (grey > 1.0f) {
         grey = 0.0f;
     }
-    glClearColor(grey, grey, grey, 1.0f);
+    glClearColor(0.2, 0.35, 0.60, 1.0f);
     checkGlError("glClearColor");
     glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     checkGlError("glClear");
@@ -227,11 +227,15 @@ void renderFrame() {
 	IdentityMatrix(gProjMatrix);
 
 	if (aspectRatio > 1.0) {
-		ScaleMatrix(gProjMatrix, 1.0f, 1.0f/aspectRatio, 1.0f);
+		ScaleMatrix(gProjMatrix, 1.2f, 1.2f/aspectRatio, 1.2f);
 	} else {
-		ScaleMatrix(gProjMatrix, aspectRatio, 1.0f, 1.0f);
+		ScaleMatrix(gProjMatrix, aspectRatio, 1.2f, 1.2f);
 	}
-	RotateMatrix(gProjMatrix, rot, 0, 1, 0);
+	
+	rotY += rot;
+	RotateMatrix(gProjMatrix, rotX, 1, 0, 0);
+	RotateMatrix(gProjMatrix, rotY, 0, 1, 0);
+	RotateMatrix(gProjMatrix, rotZ, 0, 0, 1);
 
 	rot+=1.0f;
 

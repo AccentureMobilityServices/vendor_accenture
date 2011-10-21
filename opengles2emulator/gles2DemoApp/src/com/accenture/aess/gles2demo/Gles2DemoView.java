@@ -27,6 +27,7 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.opengl.GLSurfaceView;
 import android.util.Log;
+import android.view.MotionEvent;
 
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -36,6 +37,7 @@ import javax.microedition.khronos.opengles.GL10;
 class Gles2DemoView extends GLSurfaceView {
     private static String TAG = "Gles2DemoView";
     private static final boolean DEBUG = false;
+    static float rotX, rotY, rotZ;
 
     public Gles2DemoView(Context context) {
         super(context);
@@ -63,7 +65,7 @@ class Gles2DemoView extends GLSurfaceView {
   
     private static class Renderer implements GLSurfaceView.Renderer {
         public void onDrawFrame(GL10 gl) {
-        	Gles2DemoLib.step();
+        	Gles2DemoLib.step(rotX, rotY, rotZ);
         	Log.v(TAG, "render frame");
         }
 
@@ -116,5 +118,23 @@ class Gles2DemoView extends GLSurfaceView {
     	
     }
     
+        @Override
+        public boolean onTouchEvent(MotionEvent event) {
+
+        rotY = (int) event.getX() * 2;
+        rotX = (int) event.getY() * 2;
+/*
+        switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                break;
+
+                default:
+                return super.onTouchEvent(event);
+
+	   }
+*/
+	   return true;
+   	}
    
 }
+   

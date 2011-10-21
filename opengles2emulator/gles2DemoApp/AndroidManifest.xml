@@ -16,6 +16,9 @@
 ** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
 ** See the License for the specific language governing permissions and 
 ** limitations under the License.
+**
+** Moved: android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+**
 */
 -->
 
@@ -24,7 +27,6 @@
     <application
             android:label="@string/gles2demo_activity">
         <activity android:name=".Gles2DemoActivity"
-                android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
             	android:launchMode="singleTask"
             	android:configChanges="orientation|keyboardHidden">
             <intent-filter>

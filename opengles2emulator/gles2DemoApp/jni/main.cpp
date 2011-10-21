@@ -20,7 +20,7 @@
 #include <iostream>
 #include <string.h>
 
-void renderFrame();
+void renderFrame(float rotx, float roty, float rotz);
 void setupGraphics(int,int);
 
 using namespace std;
@@ -29,7 +29,7 @@ using namespace std;
 void setShaders(const char* vertexShader, const char* fragShader);
 void setModel(const char* objFile);
 char* loadFromFile(const char* filename);
-
+float rotx, roty, rotz;
 
 void removeIncompatibleElement(char* shader, char* ident) {
 	char* replace;
@@ -61,11 +61,22 @@ void InitGL ()
 	delete model;
 	
 	setupGraphics(500,500);
+<<<<<<< HEAD
+=======
+	rotx = 0.0f;
+	roty = 0.0f;
+	rotz = 0.0f;
+>>>>>>> hostNativeOpenGL
 }        
 
 void display ( void )   // Create The Display Function
 {
+<<<<<<< HEAD
 	renderFrame();
+=======
+	renderFrame(rotx, roty, rotz);
+	roty+=.5f;
+>>>>>>> hostNativeOpenGL
   glutSwapBuffers ( );
   // Swap The Buffers To Not Be Left With A Clear Screen
 }
@@ -118,7 +129,11 @@ void arrow_keys ( int a_keys, int x, int y )  // Create Special Function (requir
 int main ( int argc, char** argv )   // Create Main Function For Bringing It All Together
 {
 	glutInit            ( &argc, argv ); // Erm Just Write It =)
+<<<<<<< HEAD
 	glutInitDisplayMode ( GLUT_RGBA | GLUT_DOUBLE ); // Display Mode
+=======
+	glutInitDisplayMode ( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH); // Display Mode
+>>>>>>> hostNativeOpenGL
 	glutInitWindowSize  ( 500, 500 ); // If glutFullScreen wasn't called this is the window size
 	glutCreateWindow    ( "Native Window" ); // Window Title (argv[0] for current directory as title)
 	InitGL ();
