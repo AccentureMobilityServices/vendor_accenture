@@ -14,10 +14,20 @@
 ** See the License for the specific language governing permissions and 
 ** limitations under the License.
 */
+#include <stdio.h>
+#include <string.h>
 
 extern "C" void startGLProxy(void *);
+extern bool gShowWindow;
 
 int main(int argc, char** argv) {
 	void* va;
+	gShowWindow =false;
+	for (int i=0;i<argc;i++) {
+		if (strcmp(argv[i],"--showwindow")==0) {
+			printf("starting up with window\n");
+			gShowWindow = true;
+		}
+	}
 	startGLProxy(va);
 }

@@ -2,16 +2,16 @@
 **
 ** Copyright 2011, Accenture Ltd
 **
-** Licensed under the Apache License, Version 2.0 (the "License"); 
-** you may not use this file except in compliance with the License. 
-** You may obtain a copy of the License at 
+** Licensed under the Apache License, Version 2.0 (the "License");
+** you may not use this file except in compliance with the License.
+** You may obtain a copy of the License at
 **
-**     http://www.apache.org/licenses/LICENSE-2.0 
+**     http://www.apache.org/licenses/LICENSE-2.0
 **
-** Unless required by applicable law or agreed to in writing, software 
-** distributed under the License is distributed on an "AS IS" BASIS, 
-** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
-** See the License for the specific language governing permissions and 
+** Unless required by applicable law or agreed to in writing, software
+** distributed under the License is distributed on an "AS IS" BASIS,
+** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+** See the License for the specific language governing permissions and
 ** limitations under the License.
 */
 
@@ -21,16 +21,19 @@
 #include "glproxy_context.h"
 #include "PosixSemaphore.h"
 #include "PosixSharedMemory.h"
-#include "IPC_Messaging.h"
 #include <string>
 #include <vector>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 using namespace std;
 
+class GLES2Parser;
+class ParserBuffer;
+
 class GLRenderer
 {
-
-
 
 	struct
 	{
@@ -49,43 +52,32 @@ class GLRenderer
 	GLRenderer();
 	virtual ~GLRenderer();
 
-	void initializeGL();
 	void resizeGL(int width, int height);
-	int testReset();
-	int sendReset();
+	int sendReturnReady(void* returnAddress);
+	int sendHostSync(int theValue);
 	void GLEventLoop();
+	void ParseData();
 
 	GLproxyContext* findContext(int contextID);
 	void deleteContext(int contextID);
+
  private:
 
 	int initializeSharedMemory();
 	void transferGLImageBufferFlipped_Y(char *addressBase, theSurfaceStruct *thisSurface);
 	GLfloat oneColour, xRotation, yRotation, zRotation;
-	PosixSemaphore *thePosixSemaphore;
-	PosixSemaphore *theResetSemaphore;
-	PosixSharedMemory *thePosixSharedMemory;
 	PosixSharedMemory *theAndroidSharedMemory;
+	GLES2Parser* gl2parser;
+	ParserBuffer* buffer;
 	vector<GLproxyContext*> glcontexts;
 
-	unsigned int currentBufferPointer;
 	int theMagicNumber, theGLcommand;
 
-	int * theBufferPointer;
-	GLclampf *theGLclampfValue;
-	GLclampf *theGLclampxValue;
-	GLbitfield *theGLbitfieldValue;
-
-	GLuint fb;
-	GLuint color_rb;
-	GLuint pbufferList;
-	GLuint cubeTexture;
 
 	void *theCopyBuffer;
-	theSurfaceStruct theSurfaces[2];
-	IPC_Messaging* theOutputIPCMessageQueue;
 
-	int viewportWidth, viewportHeight;
+	int i, len, socketfd, acceptfd;
+	struct sockaddr_un saun;
 };
 
 #endif /* GLRENDERER_H_ */

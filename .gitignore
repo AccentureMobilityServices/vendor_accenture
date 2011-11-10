@@ -4,3 +4,7 @@
 *.class
 *.dex
 *.ap_
+glproxy
+texture*.pbm
+.cproject
+.project

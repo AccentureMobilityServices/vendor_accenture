@@ -9,7 +9,7 @@
 #else
 #include <GL/gl.h>
 #include <GL/glext.h>
-#include <GL/glut.h>
+#include <GL/freeglut.h>
 #endif
 
 

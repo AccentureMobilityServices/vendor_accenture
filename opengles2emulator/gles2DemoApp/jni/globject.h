@@ -200,6 +200,8 @@ public:
     void drawNormals();
 	void SetPositionHandle(GLuint positionHandle) {glPositionHandle = positionHandle;}
 	void SetNormalHandle(GLuint normalHandle) {glNormalHandle = normalHandle;}
+	void SetTextureCoordHandle(GLuint textureHandle) {glTextureCoordHandle = textureHandle;}
+	void adjustBB();
     
     
 private:
@@ -208,6 +210,7 @@ private:
     objLoader* objData;
     unsigned short* faceIndices;
     unsigned short* normalIndices;
+    unsigned short* textureIndices;
     Vector3D* surfaceNormals;
     Vector3D* vertexNormals;
     
@@ -216,10 +219,14 @@ private:
     //Vertex3D* normals;
     GLfloat* rv;
     GLfloat* rvn;
-    GLfloat* rn;
+    GLfloat* rt;
+    GLfloat* ev; // expanded vertices
+    GLfloat* en;// expanded normals
+    GLfloat* et;// expanded textures 
     GLfloat* normalLines;
 	GLuint glPositionHandle;
 	GLuint glNormalHandle;
+	GLuint glTextureCoordHandle;
     int numVertices;
     BoundingBox bb;
 };

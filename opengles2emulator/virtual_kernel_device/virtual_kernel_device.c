@@ -2,16 +2,16 @@
 **
 ** Copyright 2011, Accenture Ltd
 **
-** Licensed under the Apache License, Version 2.0 (the "License"); 
-** you may not use this file except in compliance with the License. 
-** You may obtain a copy of the License at 
+** Licensed under the Apache License, Version 2.0 (the "License");
+** you may not use this file except in compliance with the License.
+** You may obtain a copy of the License at
 **
-**     http://www.apache.org/licenses/LICENSE-2.0 
+**     http://www.apache.org/licenses/LICENSE-2.0
 **
-** Unless required by applicable law or agreed to in writing, software 
-** distributed under the License is distributed on an "AS IS" BASIS, 
-** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
-** See the License for the specific language governing permissions and 
+** Unless required by applicable law or agreed to in writing, software
+** distributed under the License is distributed on an "AS IS" BASIS,
+** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+** See the License for the specific language governing permissions and
 ** limitations under the License.
 */
 
@@ -35,7 +35,7 @@
 
 
 //#define DEBUG 1
-#ifdef DEBUG
+#if DEBUG
 #  define  DBGPRINT(...) printk(__VA_ARGS__)
 #else
 #  define  DBGPRINT(...) ((void)0)
@@ -85,7 +85,7 @@ struct goldfish_virtualDevice {
 	int buffer_status;
 	int main_minor_channel_id;			/* Minor device numbers to determine file access */
 	int control_minor_channel_id;
-	
+
 	char __iomem *mem_allocated_virtual;		/* Buffer virtual address. */
 	unsigned long mem_allocated_physical;		/* Buffer physical address. */
 
@@ -160,7 +160,7 @@ goldfish_virtualDevice_read (struct file *filp, char __user *buf, size_t count, 
 			length = GOLDFISH_VIRTUALDEVICE_READ(data, VIRTUALDEVICE_INPUT_BUFFER_2_AVAILABLE);
 			DBGPRINT("    (more) : Buffer 2 has been filled, available bytes: %d - copying to userspace...\n", length);
 		}
-   
+
 		/* Copy data to user space. */
 		if (copy_to_user (buf, kbuf, length))
 		{
@@ -168,7 +168,7 @@ goldfish_virtualDevice_read (struct file *filp, char __user *buf, size_t count, 
 //			mutex_unlock(&virtualDevice_mutex);
 			return -EFAULT;
 		}
-		
+
 		result += length;
 		buf += length;
 		count -= length;
@@ -202,43 +202,22 @@ goldfish_virtualDevice_write (struct file *filp, const char __user *buf, size_t 
 		if (copy > moduleParam_buffer_size) copy = moduleParam_buffer_size;
 
 		/* Wait until there is an available buffer to write to. */
-		wait_event_interruptible (data->wait, (data->buffer_status & (VIRTUALDEVICE_INT_OUTPUT_BUFFER_1_EMPTY | VIRTUALDEVICE_INT_OUTPUT_BUFFER_2_EMPTY)));
-		DBGPRINT("[INFO (%s)] : -> Write request - interrupt wait over :)\n", __FUNCTION__);
-		
-		/* Determine from the interrupt signal which buffer is ready to fill with data. */
-		if ((data->buffer_status & VIRTUALDEVICE_INT_OUTPUT_BUFFER_1_EMPTY) != 0) {
-			kbuf = data->output_buffer_1;
-		} else {
-			kbuf = data->output_buffer_2;
-		}
-
-		/* Copy from user space to the appropriate buffer. */
-		if (copy_from_user(kbuf, buf, copy))
+		kbuf = data->output_buffer_1;
+		if (copy_from_user (kbuf, buf, copy))
 		{
-			DBGPRINT("    (more) : copy_from_user() failed!\n");
-			result = -EFAULT;
-			break;
+			DBGPRINT("    (ERROR) : copy_to_user() failed!\n");
+			return -EFAULT;
 		}
-		else
-		{
-			spin_lock_irqsave (&data->lock, irq_flags);
 
-			/* Now we have filled the buffer, clear the buffer empty flag and signal to the Qemu device that there is a buffer with data available. */
-			if (kbuf == data->output_buffer_1) {
-				data->buffer_status &= ~VIRTUALDEVICE_INT_OUTPUT_BUFFER_1_EMPTY;
-				GOLDFISH_VIRTUALDEVICE_WRITE(data, VIRTUALDEVICE_OUTPUT_BUFFER_1_AVAILABLE, copy);
-			} else {
-				data->buffer_status &= ~VIRTUALDEVICE_INT_OUTPUT_BUFFER_2_EMPTY;
-				GOLDFISH_VIRTUALDEVICE_WRITE(data, VIRTUALDEVICE_OUTPUT_BUFFER_2_AVAILABLE, copy);
-			}
-
-			spin_unlock_irqrestore (&data->lock, irq_flags);
-		}
- 
+		data->buffer_status &= ~VIRTUALDEVICE_INT_OUTPUT_BUFFER_1_EMPTY;
+		spin_lock_irqsave (&data->lock, irq_flags);
+		GOLDFISH_VIRTUALDEVICE_WRITE(data, VIRTUALDEVICE_OUTPUT_BUFFER_1_AVAILABLE, copy);
+		spin_unlock_irqrestore (&data->lock, irq_flags);
 		buf += copy;
 		result += copy;
 		count -= copy;
 	}
+	DBGPRINT("[INFO (%s)] : -> Write request - done count: %d\n", __FUNCTION__, result);
 
 //	mutex_unlock (&virtualDevice_mutex);
 	return result;
@@ -306,7 +285,7 @@ goldfish_virtualDevice_open (struct inode *ip, struct file *fp)
 	minor_id = get_id (fp);
 
 	DBGPRINT("[INFO (%s)] : Device opened.  Main channel count: %d, control open count: %d, minor ID: %dd\n", __FUNCTION__, atomic_read(&main_open_count), atomic_read(&control_open_count), minor_id);
-				
+
 	if (minor_id == theSharedBufferData->main_minor_channel_id)
 	{
 		DBGPRINT("    (more) : On main channel.\n");
@@ -317,8 +296,8 @@ goldfish_virtualDevice_open (struct inode *ip, struct file *fp)
 			GOLDFISH_VIRTUALDEVICE_WRITE(theSharedBufferData, VIRTUALDEVICE_INITIALISE, VIRTUALDEVICE_INT_MASK);
 		}
 		goto open_unlock;
-	} 
-	else 
+	}
+	else
 	{
 		atomic_inc (&control_open_count);
 		DBGPRINT("    (more) : On minor channel.  Opened on device control ID: %d.\n", atomic_read(&control_open_count));
@@ -354,7 +333,7 @@ goldfish_virtualDevice_release (struct inode *ip, struct file* fp)
 		}
 	} else {
 		DBGPRINT("    (more) : CONTROL CHANNEL: %d  Device_id: %d  \n", __LINE__, v_drv_data->control_open_id);
-	}	
+	}
 
 
 	kfree(v_drv_data);
@@ -393,40 +372,16 @@ goldfish_virtualDevice_ioctl (struct file *fp, unsigned int cmd_in, unsigned lon
 
 	switch(cmd_in)
 	{
-		case VIRTUALDEVICE_IOCTL_SYSTEM_RESET:
-			DBGPRINT("    (more) : -> command is VIRTUALDEVICE_IOCTL_SYSTEM_RESET\n");
-			spin_lock_irqsave (&data->lock, irq_flags);
-			GOLDFISH_VIRTUALDEVICE_WRITE(data, VIRTUALDEVICE_IOCTL_SYSTEM_RESET, arg);
-			spin_unlock_irqrestore (&data->lock, irq_flags);
-			break;
-
 		case VIRTUALDEVICE_HOST_COMMAND_REGION_WRITE_DONE:
 			DBGPRINT("    (more) : -> command is VIRTUALDEVICE_HOST_COMMAND_REGION_WRITE_DONE\n");
 			spin_lock_irqsave (&data->lock, irq_flags);
 			result = GOLDFISH_VIRTUALDEVICE_READ(data, VIRTUALDEVICE_HOST_COMMAND_REGION_WRITE_DONE);
 			spin_unlock_irqrestore (&data->lock, irq_flags);
 			return result;
-			break;
-
-		case VIRTUALDEVICE_IOCTL_HOST_COMMAND_SYNC:
-			DBGPRINT("    (more) : -> command is VIRTUALDEVICE_IOCTL_HOST_COMMAND_SYNC\n");
-			spin_lock_irqsave (&data->lock, irq_flags);
-			result = GOLDFISH_VIRTUALDEVICE_READ(data, VIRTUALDEVICE_HOST_COMMAND_REGION_WRITE_DONE);
-			spin_unlock_irqrestore (&data->lock, irq_flags);
-			return result;
-			break;
-
-		case VIRTUALDEVICE_IOCTL_SIGNAL_BUFFER_SYNC:
-			DBGPRINT("    (more) : -> command is VIRTUALDEVICE_IOCTL_SIGNAL_SYNC\n");
-			spin_lock_irqsave (&data->lock, irq_flags);
-			GOLDFISH_VIRTUALDEVICE_WRITE(data, VIRTUALDEVICE_IOCTL_SIGNAL_BUFFER_SYNC, arg);
-			spin_unlock_irqrestore (&data->lock, irq_flags);
-			break;
 
 		case VIRTUALDEVICE_IOCTL_REGION_PHYSICAL_ADDR_START:
 			DBGPRINT("    (more) : -> command is VIRTUALDEVICE_IOCTL_REGION_PHYSICAL_ADDR_START\n");
 			return 	v_drv_data->region_physical_address_start;
-			break;
 
 		default:
 //				mutex_unlock (&virtualDevice_mutex);
@@ -442,11 +397,6 @@ goldfish_virtualDevice_ioctl (struct file *fp, unsigned int cmd_in, unsigned lon
 static void
 goldfish_virtualDevice_mmap_open (struct vm_area_struct *vma)
 {
-    //struct file *filp = vma->vm_file;
-    //struct virtual_device_data *v_drv_data=filp->private_data;
-    //struct goldfish_virtualDevice *data = v_drv_data->g_virtualDevice;
-
-	DBGPRINT("[INFO (%s)] : >>>>>>>>> MMAP OPEN >>>>>>>>> \n", __FUNCTION__);	
 }
 
 
@@ -467,7 +417,7 @@ goldfish_virtualDevice_mmap_close (struct vm_area_struct *vma)
 	if (v_drv_data->seq_id <= 0)
 	{
 		DBGPRINT("    (more) : Sequence id is 0 or less - releasing fragments!\n");
-		releaseFromPool(data->theMemoryPool, v_drv_data->thisFileDescriptor, data->numOfAllocatedSegs);	
+		releaseFromPool(data->theMemoryPool, v_drv_data->thisFileDescriptor, data->numOfAllocatedSegs);
 		listMemPoolTotalFree(data->theMemoryPool, data->numOfAllocatedSegs);
 	}
 
@@ -500,12 +450,12 @@ static int goldfish_mmap (struct file *filp, struct vm_area_struct *vma)
     mutex_lock (&virtualDevice_mutex);
 
 	DBGPRINT("[INFO (%s)] : Mmap requested, size: %d, file: %s pd: %pd\n",__FUNCTION__, size, filp->f_path.dentry->d_name.name, filp->f_path.dentry);
-    DBGPRINT("    (more) : File * %p, Sequence id: %d, Current file count: %lu\n", filp, v_drv_data->seq_id, file_count(filp));	
+    DBGPRINT("    (more) : File * %p, Sequence id: %d, Current file count: %lu\n", filp, v_drv_data->seq_id, file_count(filp));
 
     address = hostNativeOpenGL_getContiguousAddrFromInit();
 
     DBGPRINT("    (more) : Physical pool address = 0x%x\n", (unsigned int)virt_to_phys(address));
-    //align page boundaries:)	
+    //align page boundaries:)
     offset = (unsigned long)address /*+ vma->vm_pgoff*/;
 
 	if (v_drv_data->seq_id == 0)
@@ -530,7 +480,7 @@ static int goldfish_mmap (struct file *filp, struct vm_area_struct *vma)
 	DBGPRINT("    (more) : This offset: %lu, addr: 0x%lu\n", data->theMemoryPool[v_drv_data->memPoolIndex].theAddressOffset, offset);
 
 
-    DBGPRINT("    (more) : Offset before page align = 0x%x\n", (unsigned int)offset);	
+    DBGPRINT("    (more) : Offset before page align = 0x%x\n", (unsigned int)offset);
     offset = ((offset + PAGE_SIZE - 1) & PAGE_MASK);
     DBGPRINT("    (more) : Offset after page align = 0x%x\n", (unsigned int)offset);
     offset_phy = virt_to_phys((void *)offset);
@@ -586,7 +536,7 @@ goldfish_virtualDevice_interrupt (int irq, void *dev_id)
 		data->buffer_status = status;
 		wake_up (&data->wait);
 	}
-	
+
 	spin_unlock_irqrestore (&data->lock, irq_flags);
 	return status ? IRQ_HANDLED : IRQ_NONE;
 }
@@ -683,12 +633,12 @@ goldfish_virtualDevice_probe (struct platform_device *pdev)
 	data->input_buffer_1 = data->output_buffer_2 + moduleParam_buffer_size;
 	data->input_buffer_2 = data->input_buffer_1 + moduleParam_buffer_size;
 	DBGPRINT ("    (more) : Physical: %x, Virtual base: %x\n", buf_addr, (unsigned int)data->buffer_virt);
-	
+
 	ret = request_irq (data->irq, goldfish_virtualDevice_interrupt, IRQF_SHARED, pdev->name, data);
 	if (ret)
 		goto err_request_irq_failed;
 
-	if ((ret = misc_register (&goldfish_virtualDevice_device))) 
+	if ((ret = misc_register (&goldfish_virtualDevice_device)))
 	{
 		DBGPRINT ("    (ERROR) : misc_register(%s) returned %d in goldfish_virtualDevice_init\n", goldfish_virtualDevice_device.name, ret);
 		goto err_misc_register_failed;
@@ -696,7 +646,7 @@ goldfish_virtualDevice_probe (struct platform_device *pdev)
 	DBGPRINT ("    (more) : Registered device '%s' with minor: %d\n", goldfish_virtualDevice_device.name, goldfish_virtualDevice_device.minor);
 	data->main_minor_channel_id = goldfish_virtualDevice_device.minor;
 
-	if ((ret = misc_register (&goldfish_virtualDevice_device_control))) 
+	if ((ret = misc_register (&goldfish_virtualDevice_device_control)))
 	{
 		DBGPRINT ("    (ERROR) : misc_register(%s) returned %d in goldfish_virtualDevice_init\n", goldfish_virtualDevice_device_control.name, ret);
 		goto err_misc_register_failed;
@@ -704,7 +654,7 @@ goldfish_virtualDevice_probe (struct platform_device *pdev)
 	DBGPRINT ("    (more) : Registered device '%s' with minor: %d\n", goldfish_virtualDevice_device_control.name, goldfish_virtualDevice_device_control.minor);
 	data->control_minor_channel_id = goldfish_virtualDevice_device_control.minor;
 
-	if ((ret = misc_register (&goldfish_virtualDevice_device_exchange))) 
+	if ((ret = misc_register (&goldfish_virtualDevice_device_exchange)))
 	{
 		DBGPRINT ("    (ERROR) : misc_register(%s) returned %d in goldfish_virtualDevice_init\n", goldfish_virtualDevice_device_exchange.name, ret);
 		goto err_misc_register_failed;
@@ -720,7 +670,7 @@ goldfish_virtualDevice_probe (struct platform_device *pdev)
 	GOLDFISH_VIRTUALDEVICE_WRITE(data, SET_INPUT_BUFFER_2_ADDRESS, buf_addr + (moduleParam_buffer_size * 3));
 
 	theSharedBufferData = data;
-	
+
 	rag_memalloc = hostNativeOpenGL_getContiguousAddrFromInit();
 
 	if(rag_memalloc)
@@ -754,7 +704,7 @@ err_data_alloc_failed:
 }
 
 /* Called when device is unloaded. */
-static int 
+static int
 goldfish_virtualDevice_remove (struct platform_device *pdev)
 {
 	struct goldfish_virtualDevice *data = platform_get_drvdata (pdev);
@@ -791,7 +741,7 @@ static int __init
 goldfish_virtualDevice_init (void)
 {
 	int ret;
-	
+
 	ret = platform_driver_register (&goldfish_virtualDevice_driver);
 	if (ret < 0)
 	{

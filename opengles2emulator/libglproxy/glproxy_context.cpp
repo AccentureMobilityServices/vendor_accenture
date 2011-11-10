@@ -3,6 +3,8 @@
 #include "glheaders.h"
 #include "glproxy_context.h"
 
+bool gShowWindow=false;
+
 // we don't want to do anything in reshape or display functions, but need to define
 // them to keep glut happy and prevent it doing things like setting the viewport in
 // reshape
@@ -14,6 +16,7 @@ void reshapefn(int width, int height) {
 GLproxyContext::GLproxyContext(int contextID) 
 {
 	this->contextID = contextID;
+	glError = GL_NO_ERROR;
 }
 
 void GLproxyContext::createContext()
@@ -26,7 +29,8 @@ void GLproxyContext::createContext()
 	glClearColor(0,0,0,1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glutSwapBuffers();
-
+	if (!gShowWindow)
+		glutHideWindow();
 }
 
 AttribPointer* GLproxyContext::findAttribute(GLint index, bool createNew) 
@@ -70,5 +74,29 @@ theSurfaceStruct* GLproxyContext::getSurface(int id)
 
 void GLproxyContext::destroyContext() 
 {
+	DBG_PRINT("destroy window called\n");
 	glutDestroyWindow(windowID);
+}
+
+GLenum GLproxyContext::peekError() 
+{
+	if (glError!= GL_NO_ERROR) 
+	{
+		return glError;
+	}
+
+	glError = glGetError();
+	return glError;
+}
+GLenum GLproxyContext::getError() 
+{
+	GLenum errVal;
+	if (glError!= GL_NO_ERROR) 
+	{
+		errVal = glError;
+		glError = 0;
+		return errVal;
+	}
+
+	return glGetError();
 }

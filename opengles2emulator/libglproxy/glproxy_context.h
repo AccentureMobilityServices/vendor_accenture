@@ -3,6 +3,8 @@
 
 #include "AttribPointer.h"
 #include <vector>
+#include "debug.h"
+
 using namespace std;
 
 typedef struct
@@ -30,12 +32,15 @@ class GLproxyContext {
 	theSurfaceStruct* getSurface(int id);
 
 	AttribPointer* findAttribute(GLint index, bool createNew);
+	GLenum peekError();
+	GLenum getError();
 
  private:
 	unsigned int contextID;
 	int windowID;
 	vector<AttribPointer*> attribs;
 	theSurfaceStruct surfaces[2];
+	int glError;
 };
 
 #endif

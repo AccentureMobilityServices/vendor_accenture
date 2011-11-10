@@ -25,14 +25,8 @@ GLRenderer* render;
 
 extern "C" void startGLProxy(void *);
 
-void eventloop ( void ) 
-{
-	render->GLEventLoop();
-}
-
-// Display function is unused - we render from the commands coming in
-void display ( void )  
-{
+// if idle function is not defined, glutCheckLoop (mac osx only) does not return
+void idlefunc() {
 }
 
 void startGLProxy (void*)  
@@ -41,19 +35,13 @@ void startGLProxy (void*)
 	
 	int argc = 1;
 	char * argv[1];
-	argv[0] = "libglproxy";	
+	argv[0] = (char*)"libglproxy";	
 	glutInit            ( &argc, argv );
 	// Choose a double buffered RGBA context with a depth buffer enabled
 	glutInitDisplayMode ( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitWindowSize  ( 320, 480 ); 
-	
-	glutCreateWindow    ( "GLProxy" ); 
-	glutHideWindow();
-	render->initializeGL();
-	glutDisplayFunc     ( display );  
-	glutIdleFunc	  ( eventloop );
-	glutMainLoop        ( );          
+	glutIdleFunc(idlefunc);
+	render->GLEventLoop();
 }
-
 
 

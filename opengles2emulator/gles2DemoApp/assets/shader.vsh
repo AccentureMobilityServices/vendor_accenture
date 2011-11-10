@@ -7,9 +7,11 @@
 
 attribute vec4 position;
 attribute vec4 normal;
+attribute vec2 texCoord;
 
 varying float lightIntensity;
 varying float zDepth;
+varying vec2 tc;
 
 uniform mat4 modelViewProjMatrix;
 uniform vec3 lightDirection;
@@ -20,7 +22,7 @@ void main()
 //	newNormal = normalize(newNormal);
 	vec4 newPosition = modelViewProjMatrix * position;
     gl_Position = newPosition;
-
+	tc = texCoord;
 	lightIntensity = max(0.0, dot(newNormal.xyz, lightDirection));
-	zDepth = (2.0 - (1.0 + position.xyz.z))/2.0;
+	zDepth = (2.0 - (1.0 + newPosition.xyz.z))/2.0;
 }

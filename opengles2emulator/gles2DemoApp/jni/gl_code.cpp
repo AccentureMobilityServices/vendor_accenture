@@ -141,13 +141,44 @@ void createProgram(const char* pVertexSource, const char* pFragmentSource) {
         }
     }
 }
-
+GLuint gTex;
 GLuint gvPositionHandle;
 GLuint gProjMatrixHandle;
+GLuint gTextureHandle;
 GLuint gLightDirectionHandle;
 GLint toonDiffuseColor, toonPhongColor, toonEdge, toonPhong;
 GlObject* gObj = NULL;
 GLfloat aspectRatio;
+#define TEX_WIDTH 64 
+#define TEX_HEIGHT 64 
+
+void setupTexture() {
+	char* data = new char[TEX_WIDTH*TEX_HEIGHT*4];
+	int index = 0;
+	for (int i=0;i<TEX_WIDTH;i++) {
+		for (int j=0;j<TEX_HEIGHT;j++) {
+			int v = rand()%20 - 10;
+			data[index++] = 128+i+v;
+			data[index++] = 128+j+v;
+			data[index++] = 128+i+v;
+			data[index++] = 1;
+		}
+	}
+	glGenTextures(1, &gTex);
+	printf("tex %d\n", gTex);
+    checkGlError("glGenTextures");
+	glActiveTexture(GL_TEXTURE0);
+    checkGlError("glActiveTexture");
+	glBindTexture(GL_TEXTURE_2D, gTex);
+    checkGlError("glBindTexture");
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, TEX_WIDTH, TEX_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    checkGlError("glTexImage2D");
+
+}
 
 bool setupGraphics(int w, int h) {
     printGLString("Version", GL_VERSION);
@@ -171,17 +202,22 @@ bool setupGraphics(int w, int h) {
 		gModel = NULL;
 		gProjMatrixHandle = glGetUniformLocation(gProgram, "modelViewProjMatrix");
 		gLightDirectionHandle = glGetUniformLocation(gProgram, "lightDirection");
+		gTextureHandle = glGetUniformLocation(gProgram, "sTexture");
+		LOGV("texture handle %u\n", gTextureHandle);
 		gvPositionHandle = glGetAttribLocation(gProgram, "position");
 		LOGV("position handle %u\n", gvPositionHandle);
     	gObj->SetPositionHandle(gvPositionHandle);
-    	checkGlError("glGetAttribLocation");
 		gObj->SetNormalHandle(glGetAttribLocation(gProgram, "normal"));
-    	checkGlError("glGetAttribLocation");
+		gObj->SetTextureCoordHandle(glGetAttribLocation(gProgram, "texCoord"));
 	}
+
+    glUseProgram(gProgram);
+	setupTexture(); 
+
 
     glViewport(0, 0, w, h);
 	aspectRatio = (float)h/(float)w;
-	glFrontFace(GL_CCW);
+	glFrontFace(GL_CW);
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
     checkGlError("glViewport");
@@ -206,7 +242,7 @@ const GLfloat gTriangleVertices[] = { 0.0f, 0.5f, -0.5f, -0.5f,
 
 GLfloat gProjMatrix[16];
 
-const GLfloat lightDirection[]={0,0,-1};
+const GLfloat lightDirection[]={.4,.5,-1};
 GLfloat rot = 25.0f;
 
 void renderFrame(float rotX, float rotY, float rotZ) {
@@ -217,12 +253,9 @@ void renderFrame(float rotX, float rotY, float rotZ) {
         grey = 0.0f;
     }
     glClearColor(0.2, 0.35, 0.60, 1.0f);
-    checkGlError("glClearColor");
     glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-    checkGlError("glClear");
 
     glUseProgram(gProgram);
-    checkGlError("glUseProgram");
 
 	IdentityMatrix(gProjMatrix);
 
@@ -240,7 +273,10 @@ void renderFrame(float rotX, float rotY, float rotZ) {
 	rot+=1.0f;
 
 	glUniformMatrix4fv(gProjMatrixHandle, 1, 0, gProjMatrix);
-	 glUniform3fv(gLightDirectionHandle, 1, lightDirection);
+	glUniform3fv(gLightDirectionHandle, 1, lightDirection);
+	glUniform1i(gTextureHandle, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, gTex);
 	// render the scene	
 	gObj->renderObject();
 }

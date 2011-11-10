@@ -6,12 +6,10 @@
 //
 varying highp float lightIntensity;
 varying highp float zDepth;
+varying highp vec2 tc;
+uniform sampler2D sTexture;
 
 void main()
 {
-	highp vec4 yellow = vec4(1.0 - zDepth, zDepth, zDepth, 1.0);
-	gl_FragColor = vec4((yellow * (lightIntensity) ).rgb, 1.0);
-	
-	//vec4 v = vec4(zDepth, zDepth, 0.7, 1.0); 
-	//gl_FragColor = v;
+	gl_FragColor = texture2D(sTexture, tc)*lightIntensity;
 }

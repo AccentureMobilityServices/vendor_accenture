@@ -142,10 +142,33 @@ void GlObject::calculateNormals()
 	
 }
 
+void GlObject::adjustBB()
+{
+	BoundingBox bb;
+
+	for (int i=0;i<numTriangles*3;i++) {
+		bb.AdjustBB((Vertex3D&)*(&ev[i*3]));
+	}	
+
+	float mx = bb.maxx - bb.minx; //fmax(abs(bb.minx),abs(bb.maxx));
+	float my = bb.maxy - bb.miny; //fmax(abs(bb.miny),abs(bb.maxy));
+	float mz = bb.maxz - bb.minz; //fmax(abs(bb.minz),abs(bb.maxz));
+
+	float omax = fmax(mx,my);
+	omax = fmax(omax,mz);	
+	LOGI("max val = %f\n",omax);
+    for (int i = 0; i < numTriangles*3; i++){
+		ev[i*3] /= omax;
+		ev[i*3+1] /= omax;
+		ev[i*3+2] /= omax;
+	}
+}
+
 void GlObject::loadObject(char* filedata) {
     int vertexcount = 0;
     int facecount = 0;
     int vertexnormalcount =0;
+    int texcount =0;
     char* line;
 	char* token;
 	char* data = new char[strlen(filedata)+1];
@@ -167,6 +190,8 @@ void GlObject::loadObject(char* filedata) {
             	facecount++;
         	} else if (strcmp(token,"vn")==0) {
             	vertexnormalcount++;
+        	} else if (strcmp(token,"vt")==0) {
+            	texcount++;
        		 } else {
        	 	}
 		line = strtok_r(NULL,"\n", &lineSave);
@@ -174,15 +199,16 @@ void GlObject::loadObject(char* filedata) {
     
     
     rv = new float[vertexcount*3];
-    rvn = new float[vertexnormalcount*3]; // normals from original obj file order
-    rn = new float[vertexcount*3]; // normals rearranged in same order as vertices
-    
+    rvn = new float[vertexnormalcount*3]; // normals
+    rt = new float[texcount*2]; // texture coordinates 
     
     // only support triangles (for now)
     faceIndices = new unsigned short[facecount*3];
     normalIndices = new unsigned short[facecount*3];
+    textureIndices = new unsigned short[facecount*3];
     int vertexIndex = 0;
     int vertexNormalIndex = 0;
+	int texIndex = 0;
     int faceIndex = 0;
  
 	lineSave = NULL;
@@ -197,8 +223,7 @@ void GlObject::loadObject(char* filedata) {
         } else if (strcmp(token,"f")==0) {
             for (int i=0;i<3;i++) {
                 faceIndices[faceIndex] = atoi(strtok_r(NULL," /", &tokenSave))-1;
-                
-                atoi(strtok_r(NULL," /", &tokenSave));
+                textureIndices[faceIndex] = atoi(strtok_r(NULL," /", &tokenSave))-1;
                 normalIndices[faceIndex] = atoi(strtok_r(NULL," /", &tokenSave))-1;
                 faceIndex++;
             }
@@ -206,66 +231,39 @@ void GlObject::loadObject(char* filedata) {
             rvn[vertexNormalIndex++] = atof(strtok_r(NULL," ", &tokenSave));
             rvn[vertexNormalIndex++] = atof(strtok_r(NULL," ", &tokenSave));
             rvn[vertexNormalIndex++] = atof(strtok_r(NULL," ", &tokenSave));
+        } else if (strcmp(token,"vt")==0) {
+            rt[texIndex++] = atof(strtok_r(NULL," ", &tokenSave));
+            rt[texIndex++] = atof(strtok_r(NULL," ", &tokenSave));
        	}
 		line = strtok_r(NULL,"\n", &lineSave);
 
     }
     numTriangles = facecount;
     numVertices = vertexcount;
-    
-    int* numNormsAdded = new int[vertexcount];
-    for (int i=0;i<vertexcount;i++) {
-        rn[i*3] = 0.0f;
-        rn[i*3+1] = 0.0f;
-        rn[i*3+2] = 0.0f;
-        numNormsAdded[i] = 0;
-    }
+
+	ev = new GLfloat[facecount*3*3];
+	en = new GLfloat[facecount*3*3];
+	et = new GLfloat[facecount*3*2];
     
     for (int i=0;i<facecount*3;i++) {
         int ind = faceIndices[i];
         int normInd = normalIndices[i];
-        numNormsAdded[ind]++;
-        rn[ind*3] += rvn[normInd*3];
-        rn[ind*3+1] += rvn[normInd*3+1];
-        rn[ind*3+2] += rvn[normInd*3+2];
-    }
-    
-    for (int i=0;i<vertexcount;i++) {
-        
-       int count = numNormsAdded[i];
-
-       if (count > 1) {
-            rn[i*3] /= (float)count;
-            rn[i*3+1] /= (float)count;
-            rn[i*3+2] /= (float)count;
-            
-        }
-        //normalize
-		Vector3D* v = (Vector3D*)&rn[i*3];
-		v->Normalize();
-
-    }
-    
-    calculateNormals();
-    for (int i=0;i<numVertices;i++) {
-		Vector3D& v = *(Vector3D*)&rn[i*3];
-        v.x = vertexNormals[i].x;
-        v.y = vertexNormals[i].y;
-        v.z = vertexNormals[i].z;
-        
-    }
-	
-    
-    normalLines = new float[numVertices*3*2];
-    for (int i=0;i<numVertices;i++) {
-        normalLines[i*6] = rv[i*3];
-        normalLines[i*6+1] = rv[i*3+1];
-        normalLines[i*6+2] = rv[i*3+2];
-        normalLines[i*6+3] = rv[i*3] + rn[i*3]/5.0f;
-        normalLines[i*6+4] = rv[i*3+1] + rn[i*3+1]/5.0f;
-        normalLines[i*6+5] = rv[i*3+2] + rn[i*3+2]/5.0f;
+        int texInd = textureIndices[i];
+		for (int j=0;j<3;j++) {
+        	ev[i*3+j] = rv[ind*3+j];
+        	en[i*3+j] = rvn[normInd*3+j];
+		}
+		for (int j=0;j<2;j++) {
+        	et[i*2+j] = rt[texInd*2+j];
+		}
     }
 
+	adjustBB();
+    //for (int i=0;i<10;i++) {
+     //  printf("vertex: %f %f %f\n", ev[i*3], ev[i*3+1], ev[i*3+2]);
+     //  printf("normal: %f %f %f\n", en[i*3], en[i*3+1], en[i*3+2]);
+   // }
+    
 	delete[]data;
     
 }
@@ -273,20 +271,17 @@ void GlObject::loadObject(char* filedata) {
 
 void GlObject::renderObject() {
 
-    glVertexAttribPointer(glPositionHandle, 3, GL_FLOAT, GL_FALSE, 0, rv);
-    checkGlError("glVertexAttribPointer");
+    glVertexAttribPointer(glPositionHandle, 3, GL_FLOAT, GL_FALSE, 0, ev);
     glEnableVertexAttribArray(glPositionHandle);
-    checkGlError("glEnableVertexAttribArray");
-    glVertexAttribPointer(glNormalHandle, 3, GL_FLOAT, GL_FALSE, 0, rn);
-    checkGlError("glVertexAttribPointer");
+    glVertexAttribPointer(glNormalHandle, 3, GL_FLOAT, GL_FALSE, 0, en);
     glEnableVertexAttribArray(glNormalHandle);
-    checkGlError("glEnableVertexAttribArray");
+    glVertexAttribPointer(glTextureCoordHandle, 2, GL_FLOAT, GL_FALSE, 0, et);
+    glEnableVertexAttribArray(glTextureCoordHandle);
+
+	int numElements = numTriangles;
 	
-    
-    glDrawElements(GL_TRIANGLES, numTriangles*3, GL_UNSIGNED_SHORT, faceIndices);
-    checkGlError("glDrawArrays");
-
-
+   	//printf("number of elements %d\n", numElements); 
+    glDrawArrays(GL_TRIANGLES, 0, numElements*3);
 }
 
 void GlObject::drawNormals() {

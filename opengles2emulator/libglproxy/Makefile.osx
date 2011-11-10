@@ -1,4 +1,4 @@
-OBJS=main.o GLRenderer.o PosixSharedMemory.o PosixSemaphore.o OpenGLES2Parser.o OpenGLES1_1Parser.o ParserCommon.o GLES2.o glproxy_context.o IPC_Messaging.o
+OBJS=main.o GLRenderer.o PosixSharedMemory.o PosixSemaphore.o OpenGLES2Parser.o ParserCommon.o GLES2.o glproxy_context.o
 CC=g++
 CFLAGS=-g -fpic -m32
 LD=g++ -dynamiclib -Wl -m32

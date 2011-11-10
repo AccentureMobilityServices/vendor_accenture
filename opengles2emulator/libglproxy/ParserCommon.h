@@ -23,24 +23,35 @@
 typedef GLclampf GLclampfValue;
 typedef GLclampf GLclampxValue;
 
+class ParserBuffer {
+public:
+	ParserBuffer(int bufferSize);
 
-int parse_glClear(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
-int parse_glClearColorf(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
-int parse_glClearColorx(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
+	void setBufferSize(int bufferSize);
+	void resetBuffer();
+	void markPos();
+	void returnToMark();
+	void advance(int size);
+	void backward(int size);
 
-int parse_nullFunction(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
+	void fetchBufferWrappedBytes(void *targetBuffer, int numberOfBytes);
+	GLbitfield fetch_GLbitfield_32();
+	GLclampfValue fetch_GLclampfValue_32();
+	GLclampxValue fetch_GLclampxValue_32();
+	GLenum fetch_GLenum();
+	GLuint fetch_GLuint();
+	GLint fetch_GLint();
+	GLsizei fetch_GLsizei();
+	void fetch_GLstring(int len, GLchar* buffer);
+	GLsizeiptr fetch_GLsizeiptr();
 
+	char* getBufferPointer() {return theBufferAddress + locationInBuffer;}
 
-void fetchBufferWrappedBytes(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize, void *targetBuffer, int numberOfBytes);
-GLbitfield fetch_GLbitfield_32(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
-GLclampfValue fetch_GLclampfValue_32(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
-GLclampxValue fetch_GLclampxValue_32(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
-GLenum fetch_GLenum(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
-GLuint fetch_GLuint(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
-GLint fetch_GLint(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
-GLsizei fetch_GLsizei(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize);
-GLchar* fetch_GLstring(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize, int len);
-
-
+private:
+	char* theBufferAddress;
+	unsigned int locationInBuffer;
+	int bufferSize;
+	int mark;
+};
 
 #endif /* PARSERCOMMON_H_ */

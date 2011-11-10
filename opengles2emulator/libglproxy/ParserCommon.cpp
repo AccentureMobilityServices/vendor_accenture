@@ -1,158 +1,142 @@
 /*
-**
-** Copyright 2011, Accenture Ltd
-**
-** Licensed under the Apache License, Version 2.0 (the "License"); 
-** you may not use this file except in compliance with the License. 
-** You may obtain a copy of the License at 
-**
-**     http://www.apache.org/licenses/LICENSE-2.0 
-**
-** Unless required by applicable law or agreed to in writing, software 
-** distributed under the License is distributed on an "AS IS" BASIS, 
-** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
-** See the License for the specific language governing permissions and 
-** limitations under the License.
-*/
-
+ **
+ ** Copyright 2011, Accenture Ltd
+ **
+ ** Licensed under the Apache License, Version 2.0 (the "License"); 
+ ** you may not use this file except in compliance with the License. 
+ ** You may obtain a copy of the License at 
+ **
+ **     http://www.apache.org/licenses/LICENSE-2.0 
+ **
+ ** Unless required by applicable law or agreed to in writing, software 
+ ** distributed under the License is distributed on an "AS IS" BASIS, 
+ ** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+ ** See the License for the specific language governing permissions and 
+ ** limitations under the License.
+ */
+#include <stdlib.h>
+#include <string.h>
 #include "ParserCommon.h"
 #include "debug.h"
 
-/*
- * The GL rendering functions.
- */
-
-char tempDataStorage[256];
-
-int
-parse_glClear(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
-{
-GLbitfield testField;
-
-		DBG_PRINT("(%s)\n", __FUNCTION__);
-		glClear(fetch_GLbitfield_32(theBufferAddress, locationInBuffer, bufferSize));
-
-		return 0;
+ParserBuffer::ParserBuffer(int bufferSize) {
+	this->theBufferAddress = (char*)malloc(bufferSize);
+	this->locationInBuffer = 0;
+	this->bufferSize = bufferSize;
 }
 
-int
-parse_glClearColorf(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
+void ParserBuffer::resetBuffer() 
 {
-		DBG_PRINT("(%s)\n", __FUNCTION__);
-
-		
-		GLfloat r = fetch_GLclampfValue_32(theBufferAddress, locationInBuffer, bufferSize);
-		GLfloat g = fetch_GLclampfValue_32(theBufferAddress, locationInBuffer, bufferSize);
-		GLfloat b = fetch_GLclampfValue_32(theBufferAddress, locationInBuffer, bufferSize);
-		GLfloat a = fetch_GLclampfValue_32(theBufferAddress, locationInBuffer, bufferSize);
-
-		DBG_PRINT("color %f %f %f %f\n",r,g,b,a);	 
-		glClearColor(r,g,b,a);
-		return 0;
+	locationInBuffer = 0;
 }
 
-int
-parse_glClearColorx(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
+void ParserBuffer::setBufferSize(int size) 
 {
-		DBG_PRINT("(%s)\n", __FUNCTION__);
-		glClearColor(fetch_GLclampxValue_32(theBufferAddress, locationInBuffer, bufferSize),
-		fetch_GLclampxValue_32(theBufferAddress, locationInBuffer, bufferSize),
-		fetch_GLclampxValue_32(theBufferAddress, locationInBuffer, bufferSize),
-		fetch_GLclampxValue_32(theBufferAddress, locationInBuffer, bufferSize));
-		return 0;
-}
-
-int
-parse_nullFunction(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
-{
-		DBG_PRINT("(%s)\n", __FUNCTION__);
-		return -1;
-}
-
-
-/*
- * Data access support functions - should be as a separate file.
- */
-
-void fetchBufferWrappedBytes(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize, void *targetBuffer, int numberOfBytes)
-{
-int i;
-unsigned char *destAddress = (unsigned char *)targetBuffer, *sourceAddress = (unsigned char*)theBufferAddress;
-
-	for (i = 0; i < numberOfBytes; i++)
-	{
-		destAddress[i] = sourceAddress[((*locationInBuffer)++)];
-		(*locationInBuffer) %= bufferSize;
+	if (size > bufferSize) {
+		theBufferAddress = (char*)realloc(theBufferAddress, size);
+		bufferSize = size;
 	}
 }
 
-GLbitfield
-fetch_GLbitfield_32(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
+void ParserBuffer::backward(int size)
 {
-GLbitfield theValue;
+	locationInBuffer-=size;
+	locationInBuffer%=bufferSize;
+}
 
-	fetchBufferWrappedBytes(theBufferAddress, locationInBuffer, bufferSize, tempDataStorage, sizeof(GLbitfield));
-	theValue = *(GLbitfield *)tempDataStorage;
+void ParserBuffer::markPos() 
+{
+	mark = locationInBuffer;
+}
+
+void ParserBuffer::returnToMark() 
+{
+	locationInBuffer = mark;
+}
+
+void ParserBuffer::advance(int size) 
+{
+	locationInBuffer += size;
+	locationInBuffer %= bufferSize;
+}
+
+void ParserBuffer::fetchBufferWrappedBytes(void *targetBuffer, int numberOfBytes)
+{
+	int i;
+	unsigned char *destAddress = (unsigned char *)targetBuffer, *sourceAddress = (unsigned char*)theBufferAddress;
+
+
+	int charsLeft = bufferSize - locationInBuffer;
+	int overflow = 0;
+	if (numberOfBytes > charsLeft) 
+	{
+		overflow = numberOfBytes - charsLeft;
+		numberOfBytes = charsLeft;
+	}
+	memcpy(destAddress, &sourceAddress[locationInBuffer], numberOfBytes);
+	locationInBuffer += numberOfBytes;
+	if (overflow > 0){ 
+		memcpy(destAddress+numberOfBytes, &sourceAddress[0], overflow);
+		locationInBuffer = overflow;
+	}
+}
+
+GLbitfield ParserBuffer::fetch_GLbitfield_32()
+{
+	GLbitfield theValue;
+
+	fetchBufferWrappedBytes(&theValue, sizeof(GLbitfield));
 	return theValue;
 }
 
-GLclampfValue
-fetch_GLclampfValue_32(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
+GLclampfValue ParserBuffer::fetch_GLclampfValue_32()
 {
-GLclampfValue theValue;
-
-	fetchBufferWrappedBytes(theBufferAddress, locationInBuffer, bufferSize, tempDataStorage, sizeof(GLclampfValue));
-	theValue = *(GLclampfValue *)tempDataStorage;
+	GLclampfValue theValue;
+	fetchBufferWrappedBytes(&theValue, sizeof(GLclampfValue));
 	return theValue;
 }
 
-GLclampxValue
-fetch_GLclampxValue_32(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
+GLclampxValue ParserBuffer::fetch_GLclampxValue_32()
 {
-GLclampxValue theValue;
-
-	fetchBufferWrappedBytes(theBufferAddress, locationInBuffer, bufferSize, tempDataStorage, sizeof(GLclampxValue));
-	theValue = *(GLclampxValue *)tempDataStorage;
+	GLclampxValue theValue;
+	fetchBufferWrappedBytes(&theValue, sizeof(GLclampxValue));
 	return theValue;
 }
 
-GLenum fetch_GLenum(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
-{
+GLenum ParserBuffer::fetch_GLenum() {
 	GLenum theValue;
-	fetchBufferWrappedBytes(theBufferAddress, locationInBuffer, bufferSize, tempDataStorage, sizeof(GLenum));
-	theValue = *(GLenum *)tempDataStorage;
+	fetchBufferWrappedBytes(&theValue, sizeof(GLenum));
 	return theValue;
 }
-GLuint fetch_GLuint(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
+GLuint ParserBuffer::fetch_GLuint()
 {
 	GLuint theValue;
-	fetchBufferWrappedBytes(theBufferAddress, locationInBuffer, bufferSize, tempDataStorage, sizeof(GLuint));
-	theValue = *(GLuint *)tempDataStorage;
+	fetchBufferWrappedBytes(&theValue, sizeof(GLuint));
 	return theValue;
 }
 
-GLint fetch_GLint(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
+GLint ParserBuffer::fetch_GLint()
 {
 	GLint theValue;
-	fetchBufferWrappedBytes(theBufferAddress, locationInBuffer, bufferSize, tempDataStorage, sizeof(GLuint));
-	theValue = *(GLint *)tempDataStorage;
+	fetchBufferWrappedBytes(&theValue, sizeof(GLuint));
 	return theValue;
 }
 
-
-
-GLsizei fetch_GLsizei(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize)
+GLsizei ParserBuffer::fetch_GLsizei()
 {
 	GLsizei theValue;
-	fetchBufferWrappedBytes(theBufferAddress, locationInBuffer, bufferSize, tempDataStorage, sizeof(GLsizei));
-	theValue = *(GLsizei *)tempDataStorage;
+	fetchBufferWrappedBytes(&theValue, sizeof(GLsizei));
 	return theValue;
 }
 
-GLchar* fetch_GLstring(void *theBufferAddress, unsigned int *locationInBuffer, int bufferSize, int len)
+void ParserBuffer::fetch_GLstring(int len, GLchar* buffer)
 {
-	GLchar* theValue;
-	fetchBufferWrappedBytes(theBufferAddress, locationInBuffer, bufferSize, tempDataStorage, len);
-	theValue = (GLchar *)tempDataStorage;
+	fetchBufferWrappedBytes(buffer, len);
+}
+//TODO: are these correct?
+GLsizeiptr ParserBuffer::fetch_GLsizeiptr()
+{
+	GLsizeiptr theValue;
+	fetchBufferWrappedBytes(&theValue, sizeof(GLsizeiptr));
 	return theValue;
 }
