@@ -7,8 +7,15 @@
 
 using namespace std;
 
-typedef struct
+typedef struct theSurfaceStruct
 {
+	theSurfaceStruct() {
+		surfaceEnumerator =0;
+		surfacePhysicalAddress =0;
+		width =0;
+		height =0;
+
+	}
 	int	surfaceEnumerator;
 	int pid;
 	unsigned int surfacePhysicalAddress;
@@ -29,7 +36,7 @@ class GLproxyContext {
 	bool isContext(int contextID);
 	void switchToContext();
 
-	theSurfaceStruct* getSurface(int id);
+	theSurfaceStruct* getSurface();
 
 	AttribPointer* findAttribute(GLint index, bool createNew);
 	GLenum peekError();
@@ -39,7 +46,7 @@ class GLproxyContext {
 	unsigned int contextID;
 	int windowID;
 	vector<AttribPointer*> attribs;
-	theSurfaceStruct surfaces[2];
+	theSurfaceStruct lastSurface;
 	int glError;
 };
 

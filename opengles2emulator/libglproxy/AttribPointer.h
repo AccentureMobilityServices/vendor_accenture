@@ -26,7 +26,7 @@ public:
 		normalized = 0;
 		stride = 0;
 		length = 0;
-		pointer = NULL;
+		pointer = 0;
 		enabled = false;
 	}
 	GLint		index;

@@ -242,7 +242,7 @@ const GLfloat gTriangleVertices[] = { 0.0f, 0.5f, -0.5f, -0.5f,
 
 GLfloat gProjMatrix[16];
 
-const GLfloat lightDirection[]={.4,.5,-1};
+const GLfloat lightDirection[]={0,0,-1};
 GLfloat rot = 25.0f;
 
 void renderFrame(float rotX, float rotY, float rotZ) {

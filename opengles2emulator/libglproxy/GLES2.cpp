@@ -1,19 +1,19 @@
 /*
-**
-** Copyright 2011, Accenture Ltd
-**
-** Licensed under the Apache License, Version 2.0 (the "License");
-** you may not use this file except in compliance with the License.
-** You may obtain a copy of the License at
-**
-**     http://www.apache.org/licenses/LICENSE-2.0
-**
-** Unless required by applicable law or agreed to in writing, software
-** distributed under the License is distributed on an "AS IS" BASIS,
-** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-** See the License for the specific language governing permissions and
-** limitations under the License.
-*/
+ **
+ ** Copyright 2011, Accenture Ltd
+ **
+ ** Licensed under the Apache License, Version 2.0 (the "License");
+ ** you may not use this file except in compliance with the License.
+ ** You may obtain a copy of the License at
+ **
+ **     http://www.apache.org/licenses/LICENSE-2.0
+ **
+ ** Unless required by applicable law or agreed to in writing, software
+ ** distributed under the License is distributed on an "AS IS" BASIS,
+ ** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ ** See the License for the specific language governing permissions and
+ ** limitations under the License.
+ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -21,9 +21,17 @@
 #include "ParserCommon.h"
 #include "AttribPointer.h"
 #include "debug.h"
+
+#include "SharedMemory.h"
+#include <string>
+
+using namespace std;
 /*
  * The GL rendering functions.
  */
+
+#define GL_SHADER_BINARY_FORMATS          0x8DF8
+#define GL_NUM_SHADER_BINARY_FORMATS      0x8DF9
 
 AttribPointer* GLES2Parser::findAttribute(GLint index, bool createIfNecessary) {
 	AttribPointer* ptr = NULL;
@@ -84,32 +92,23 @@ int getDataSize(GLenum type)
 }
 
 const char* shaderCompatibilityProg = "#define mediump\n"
-										"#define highp\n"
-										"#define lowp\n"
-										"mat3 gles2emulator_matrix3(mat4 orig) {\n"
-										"	mat3 val;\n"
-										"	int i,j;\n"
-										"	for (i=0;i<3;i++){\n"
-										"		for (j=0;j<3;j++){\n"
-										"			val[i][j] = orig[i][j];\n"
-										"		}\n"
-										"	}\n"
-										"	return val;\n"
-										"}\n"	
-										"mat3 gles2emulator_matrix3(mat3 orig) {\n"
-										"	mat3 val;\n"
-										"	int i,j;\n"
-										"	for (i=0;i<3;i++)\n"
-										"		for (j=0;j<3;j++)\n"
-										"			val[i][j] = orig[i][j];\n"
-										"	return val;\n"
-										"}\n"	
-										"#define mat3(x) gles2emulator_matrix3(x)\n";
-						
+"#define highp\n"
+"#define lowp\n"
+"#define mat3(orig) {\\\n"
+"	mat3 val;\\\n"
+"	int i,j;\\\n"
+"	for (i=0;i<3;i++){\\\n"
+"		for (j=0;j<3;j++){\\\n"
+"			val[i][j] = orig[i][j];\\\n"
+"		}\\\n"
+"	}\\\n"
+"	return val;\\\n"
+"}\n";
+
 void removeIncompatibleLine(char* shader, const char* ident) {
 	char* replace;
 	char* endline;
-	while (replace = strstr(shader, ident)) {
+	while ((replace = strstr(shader, ident))) {
 		endline = strstr(shader, ";");
 		memset(replace, ' ', (endline-replace)+1);
 	}
@@ -139,75 +138,62 @@ void GLES2Parser::setReturnVal(int retVal)
 	}
 }
 
-int
-GLES2Parser::parse_glClear()
+void GLES2Parser::parse_glClear()
 {
-GLbitfield testField;
+	GLbitfield testField;
 
-		DBG_PRINT("(%s)\n", __FUNCTION__);
-		glClear(buffer.fetch_GLbitfield_32());
-
-		return 0;
+	DBG_PRINT("(%s)\n", __FUNCTION__);
+	glClear(buffer.fetch_GLbitfield_32());
 }
 
-int
-GLES2Parser::parse_glClearColorf()
+void GLES2Parser::parse_glClearColorf()
 {
-		DBG_PRINT("(%s)\n", __FUNCTION__);
+	DBG_PRINT("(%s)\n", __FUNCTION__);
 
 
-		GLfloat r = buffer.fetch_GLclampfValue_32();
-		GLfloat g = buffer.fetch_GLclampfValue_32();
-		GLfloat b = buffer.fetch_GLclampfValue_32();
-		GLfloat a = buffer.fetch_GLclampfValue_32();
+	GLfloat r = buffer.fetch_GLclampfValue_32();
+	GLfloat g = buffer.fetch_GLclampfValue_32();
+	GLfloat b = buffer.fetch_GLclampfValue_32();
+	GLfloat a = buffer.fetch_GLclampfValue_32();
 
-		DBG_PRINT("color %f %f %f %f\n",r,g,b,a);
-		glClearColor(r,g,b,a);
-		return 0;
+	DBG_PRINT("color %f %f %f %f\n",r,g,b,a);
+	glClearColor(r,g,b,a);
 }
 
-int
-GLES2Parser::parse_glClearColorx()
+void GLES2Parser::parse_glClearColorx()
 {
-		DBG_PRINT("(%s)\n", __FUNCTION__);
-		GLfloat r = buffer.fetch_GLclampxValue_32();
-		GLfloat g = buffer.fetch_GLclampxValue_32();
-		GLfloat b = buffer.fetch_GLclampxValue_32();
-		GLfloat a = buffer.fetch_GLclampxValue_32();
+	DBG_PRINT("(%s)\n", __FUNCTION__);
+	GLfloat r = buffer.fetch_GLclampxValue_32();
+	GLfloat g = buffer.fetch_GLclampxValue_32();
+	GLfloat b = buffer.fetch_GLclampxValue_32();
+	GLfloat a = buffer.fetch_GLclampxValue_32();
 
-		DBG_PRINT("color %f %f %f %f\n",r,g,b,a);
-		glClearColor(r,g,b,a);
-		return 0;
+	DBG_PRINT("color %f %f %f %f\n",r,g,b,a);
+	glClearColor(r,g,b,a);
 }
 
-int
-GLES2Parser::parse_nullFunction()
+void GLES2Parser::parse_nullFunction()
 {
-		DBG_PRINT("(%s)\n", __FUNCTION__);
-		return -1;
+	DBG_PRINT("(%s)\n", __FUNCTION__);
 }
 
 
-int GLES2Parser::parse_glCreateProgram()
+void GLES2Parser::parse_glCreateProgram()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	int programName = glCreateProgram();
 	setReturnVal(programName);
-	showError();
 
-	return 0;
 }
 
-int GLES2Parser::parse_glCreateShader()
+void GLES2Parser::parse_glCreateShader()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum shaderType = buffer.fetch_GLenum();
 	int shader = glCreateShader(shaderType);
 	setReturnVal(shader);
-	showError();
-	return 0;
 }
-int GLES2Parser::parse_glGetShaderiv()
+void GLES2Parser::parse_glGetShaderiv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint shader = buffer.fetch_GLuint();
@@ -215,20 +201,16 @@ int GLES2Parser::parse_glGetShaderiv()
 	int val;
 	glGetShaderiv(shader, param, &val);
 	setReturnVal(val);
-	showError();
-	return 0;
 }
-int GLES2Parser::parse_glGetShaderInfoLog()
+void GLES2Parser::parse_glGetShaderInfoLog()
 {
-	DBG_PRINT("(%s)\n", __FUNCTION__);
+	DBG_PRINTV("(%s)\n", __FUNCTION__);
 	GLuint shader = buffer.fetch_GLuint();
 	GLsizei maxlen = buffer.fetch_GLsizei();
 	glGetShaderInfoLog(shader, maxlen, (GLsizei*)returnAddress, ((GLchar*)returnAddress)+sizeof(GLsizei) );
-	DBG_PRINT("Shader Log\n%s\n",(char*)((GLchar*)returnAddress)+sizeof(GLsizei));
-	showError();
-	return 0;
+	DBG_PRINTV("Shader Log\n%s\n",(char*)((GLchar*)returnAddress)+sizeof(GLsizei));
 }
-int GLES2Parser::parse_glGetProgramiv()
+void GLES2Parser::parse_glGetProgramiv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint program = buffer.fetch_GLuint();
@@ -236,57 +218,75 @@ int GLES2Parser::parse_glGetProgramiv()
 	int val;
 	glGetProgramiv(program, param, &val);
 	setReturnVal(val);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glShaderSource()
+extern string preprocessor(string input, int shader);
+
+void GLES2Parser::parse_glShaderSource()
 {
 	int i;
-	DBG_PRINT("(%s)\n", __FUNCTION__);
+	DBG_PRINTV("(%s)\n", __FUNCTION__);
 	GLuint shader = buffer.fetch_GLuint();
 	GLsizei count = buffer.fetch_GLsizei();		
-	GLint* lengths = new GLint[count+1];
-	GLchar** strings = new GLchar*[count+1];
-	GLint len = strlen(shaderCompatibilityProg); 
+	GLchar* tmpBuf = NULL;
+
+	string input = shaderCompatibilityProg;
+	//GLint len = strlen(shaderCompatibilityProg); 
+	DBG_PRINTV("shader %d count %d\n", shader, count);
 	// the first string passed to the pc GL implementation is a shader compatibility program
-	strings[0] = new GLchar[len+1];
-	strcpy(strings[0], shaderCompatibilityProg);
-	lengths[0] = len;
+	for (i=0;i<count;i++) {
+		int len = buffer.fetch_GLint();
+		tmpBuf = new GLchar[len+1];
+		buffer.fetch_GLstring(len, tmpBuf);
+		tmpBuf[len] = '\0';
 
-	for (i=1;i<=count;i++) {
-		len = buffer.fetch_GLint();
-		lengths[i] = len;
-		strings[i] = new GLchar[len+1];
-		buffer.fetch_GLstring(len, strings[i]);
-		strings[i][len] = '\0';
-		
-		removeIncompatibleElements(strings[i]); // we can't fix the standalone precision statement with the shaderCompat program
-		DBG_PRINT("length: %d\n%s\n", len, strings[i]);
+		removeIncompatibleElements(tmpBuf); // we can't fix the standalone precision statement with the shaderCompat program
+		DBG_PRINT("shader length: %d\n", len);
+		input+=tmpBuf;
+		delete[] tmpBuf;
 	}
-	glShaderSource(shader, count+1, (const GLchar**)strings, lengths);
-	showError();
-
-	for (i=0;i< count;i++) {
-		delete[] strings[i];
-	}
-	delete[]strings;
-	delete[]lengths;
-	return 0;
+	string shadersrc;
+#ifdef USE_EXTERNAL_PREPROCESSOR
+	shadersrc = preprocessor(input, shader);
+#else
+	shadersrc = input;
+#endif
+	const GLchar* strings[1];
+	strings[0] = (const GLchar*)shadersrc.c_str();
+	DBG_PRINT(">>>>\n%s\n<<<<\n", shadersrc.c_str());
+	glShaderSource(shader, 1, strings, NULL);
 }
 
-int GLES2Parser::parse_glUseProgram()
+void GLES2Parser::parse_glUseProgram()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint programName = buffer.fetch_GLuint();
-	DBG_PRINT("%d\n", programName);
+	DBG_PRINTV("select program %d\n", programName);
 	if (programName != 0)
 		glUseProgram(programName);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glVertexAttribPointer()
+void GLES2Parser::parse_glVertexAttribPointer()
+{
+	DBG_PRINT("(%s)\n", __FUNCTION__);
+	int i;
+	GLuint index  = buffer.fetch_GLuint();
+	AttribPointer* ptr = findAttribute(index, true);
+	ptr->size = buffer.fetch_GLint();
+	ptr->type = buffer.fetch_GLenum();
+	ptr->normalized = buffer.fetch_GLuint();
+	ptr->stride = buffer.fetch_GLsizei();
+	ptr->pointer = (void*)buffer.fetch_GLint();
+	DBG_PRINT("pointer %08x\n",(unsigned int) ptr->pointer);
+	glVertexAttribPointer(index,
+			ptr->size,
+			ptr->type,
+			ptr->normalized,
+			ptr->stride,
+			ptr->pointer);
+}
+
+void GLES2Parser::parse_sendVertexAttribPointer()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	int i;
@@ -298,7 +298,12 @@ int GLES2Parser::parse_glVertexAttribPointer()
 	ptr->stride = buffer.fetch_GLsizei();
 	ptr->length = buffer.fetch_GLint();
 	DBG_PRINT("pointer %08x\n",(unsigned int) ptr->pointer);
-	ptr->pointer = realloc(ptr->pointer, ptr->length);
+	if (ptr->length >0) {
+		ptr->pointer = realloc(ptr->pointer, ptr->length);
+	} else {
+		free(ptr->pointer);
+		ptr->pointer = NULL;
+	}
 	DBG_PRINT("size %d length:%d\n",ptr->size, ptr->length);
 	buffer.fetchBufferWrappedBytes((void*)ptr->pointer, ptr->length);
 	float* data = (float*)ptr->pointer;
@@ -311,13 +316,9 @@ int GLES2Parser::parse_glVertexAttribPointer()
 			ptr->normalized,
 			ptr->stride,
 			ptr->pointer);
-	showError();
-	// we only receive enabled arrays, so enable by default
-	glEnableVertexAttribArray(index);
-	showError();
-	return 0;
 }
-int GLES2Parser::parse_glUniform3fv()
+
+void GLES2Parser::parse_glUniform3fv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	int i;
@@ -329,9 +330,9 @@ int GLES2Parser::parse_glUniform3fv()
 		DBG_PRINT("%d %f %f %f\n", i/3, data[i], data[i+1], data[i+2]);
 	}
 	glUniform3fv(index, count, data);
-	showError();
 }
-int GLES2Parser::parse_glUniformMatrix4fv()
+
+void GLES2Parser::parse_glUniformMatrix4fv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	int i;
@@ -341,55 +342,60 @@ int GLES2Parser::parse_glUniformMatrix4fv()
 	GLfloat* data = new GLfloat[count*16];
 	buffer.fetchBufferWrappedBytes((void*)data, count*16*sizeof(GLfloat));
 	for (i=0;i<count*16;i+=16) {
-		DBG_PRINT("%d %f %f %f %f\n", i>>4, data[i], data[i+1], data[i+2],data[i+3]);
-		DBG_PRINT("%d %f %f %f %f\n", i>>4, data[i+4], data[i+5], data[i+6],data[i+7]);
-		DBG_PRINT("%d %f %f %f %f\n", i>>4, data[i+8], data[i+9], data[i+10],data[i+12]);
-		DBG_PRINT("%d %f %f %f %f\n", i>>4, data[i+12], data[i+13], data[i+14],data[i+15]);
+		DBG_PRINTV("%d %f %f %f %f\n", i>>4, data[i], data[i+1], data[i+2],data[i+3]);
+		DBG_PRINTV("%d %f %f %f %f\n", i>>4, data[i+4], data[i+5], data[i+6],data[i+7]);
+		DBG_PRINTV("%d %f %f %f %f\n", i>>4, data[i+8], data[i+9], data[i+10],data[i+12]);
+		DBG_PRINTV("%d %f %f %f %f\n", i>>4, data[i+12], data[i+13], data[i+14],data[i+15]);
 	}
 	glUniformMatrix4fv(index, count,(GLboolean)transVal, data);
-	showError();
+	
 }
-// we only receive enabled arrays, so enable by default
-int GLES2Parser::parse_glEnableVertexAttribArray()
+
+void GLES2Parser::parse_glEnableVertexAttribArray()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint index = buffer.fetch_GLuint();
+	AttribPointer* ptr = findAttribute(index, true);
+	ptr->enabled = true;
 	glEnableVertexAttribArray(index);
-	showError();
-	return 0;
 }
-int GLES2Parser::parse_glLinkProgram()
+void GLES2Parser::parse_glLinkProgram()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint program = buffer.fetch_GLuint();
+	DBG_PRINTV("linking program %d\n",program);
 	glLinkProgram(program);
-	showError();
-	return 0;
 }
-int GLES2Parser::parse_glAttachShader()
+void GLES2Parser::parse_glAttachShader()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint program = buffer.fetch_GLuint();
 	GLuint shader = buffer.fetch_GLuint();
-	DBG_PRINT("program %d shader %d\n", program, shader);
+	DBG_PRINTV("program %d shader %d\n", program, shader);
 	glAttachShader(program, shader);
-	showError();
-	return 0;
 }
-int GLES2Parser::parse_glGetProgramInfoLog()
+void GLES2Parser::parse_glGetProgramInfoLog()
 {
-	DBG_PRINT("(%s)\n", __FUNCTION__);
-	return 0;
+	DBG_PRINTV("(%s)\n", __FUNCTION__);
+	GLuint shader = buffer.fetch_GLuint();
+	GLsizei maxlen = buffer.fetch_GLsizei();
+	glGetProgramInfoLog(shader, maxlen, (GLsizei*)returnAddress, ((GLchar*)returnAddress)+sizeof(GLsizei) );
+	DBG_PRINTV("Program Log\n%s\n",(char*)((GLchar*)returnAddress)+sizeof(GLsizei));
 }
-int GLES2Parser::parse_glDeleteProgram()
+void GLES2Parser::parse_glDeleteProgram()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint program = buffer.fetch_GLuint();
 	glDeleteProgram(program);
-	showError();
-	return 0;
 }
-int GLES2Parser::parse_glGetAttribLocation()
+void GLES2Parser::parse_glDeleteShader()
+{
+	DBG_PRINT("(%s)\n", __FUNCTION__);
+	GLuint shader = buffer.fetch_GLuint();
+	glDeleteShader(shader);
+}
+
+void GLES2Parser::parse_glGetAttribLocation()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint program = buffer.fetch_GLuint();
@@ -399,13 +405,11 @@ int GLES2Parser::parse_glGetAttribLocation()
 	DBG_PRINT("strlength %d str %s\n",strlength, name) ;
 	int attribLocation =glGetAttribLocation(program,name);
 	setReturnVal(attribLocation);
-	showError();
 	delete[]name;
 
-	return 0;
 }
 
-int GLES2Parser::parse_glGetUniformLocation()
+void GLES2Parser::parse_glGetUniformLocation()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint program = buffer.fetch_GLuint();
@@ -415,51 +419,42 @@ int GLES2Parser::parse_glGetUniformLocation()
 	DBG_PRINT("strlength %d str %s\n",strlength, name) ;
 	int uniformLocation = glGetUniformLocation(program,name);
 	setReturnVal(uniformLocation);
-	showError();
 	delete[]name;
 
-	return 0;
 }
 
-int GLES2Parser::parse_glCompileShader()
+void GLES2Parser::parse_glCompileShader()
 {
-	DBG_PRINT("(%s)\n", __FUNCTION__);
+	DBG_PRINTV("(%s)\n", __FUNCTION__);
 	GLuint shader;
 	shader = buffer.fetch_GLuint();
+	DBG_PRINTV("compiling shader %d\n",shader);
 	glCompileShader(shader);
-	showError();
-	return 0;
 }
-int GLES2Parser::parse_glFrontFace()
+void GLES2Parser::parse_glFrontFace()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum mode;
 	mode = buffer.fetch_GLenum();
 	glFrontFace(mode);
-	showError();
-	return 0;
 }
-int GLES2Parser::parse_glCullFace()
+void GLES2Parser::parse_glCullFace()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum mode;
 	mode = buffer.fetch_GLenum();
 	glCullFace(mode);
-	showError();
-	return 0;
 }
-int GLES2Parser::parse_glDrawArrays()
+void GLES2Parser::parse_glDrawArrays()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum mode = buffer.fetch_GLenum();
 	GLsizei count = buffer.fetch_GLsizei();
-	DBG_PRINT("mode %d count %d\n",mode, count);
+	DBG_PRINT("draw arrays mode %d count %d\n",mode, count);
 	glDrawArrays(mode, 0, count);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glDrawElements()
+void GLES2Parser::parse_glDrawElements()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum mode = buffer.fetch_GLenum();
@@ -471,10 +466,8 @@ int GLES2Parser::parse_glDrawElements()
 	buffer.fetchBufferWrappedBytes(indicesPtr, dataLength);
 	DBG_PRINT("mode %d count %d type %d\n",mode, count, type);
 	glDrawElements(mode, count, type, indicesPtr);
-	showError();
-	return 0;
 }
-int GLES2Parser::parse_glBlendColor()
+void GLES2Parser::parse_glBlendColor()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLfloat r = buffer.fetch_GLclampfValue_32();
@@ -484,39 +477,35 @@ int GLES2Parser::parse_glBlendColor()
 
 	DBG_PRINT("color %f %f %f %f\n",r,g,b,a);
 	glBlendColor(r,g,b,a);
-	return 0;
 }
 
-int GLES2Parser::parse_glBlendEquation()
+void GLES2Parser::parse_glBlendEquation()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum mode = buffer.fetch_GLenum();
 	DBG_PRINT("mode %d\n", mode);
 	glBlendEquation(mode);
-	return 0;
 }
 
-int GLES2Parser::parse_glBlendEquationSeparate()
+void GLES2Parser::parse_glBlendEquationSeparate()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum modeRGB = buffer.fetch_GLenum();
 	GLenum modeAlpha = buffer.fetch_GLenum();
 	DBG_PRINT("modeRGB %d modeAlpha %d\n", modeRGB, modeAlpha);
 	//glBlendEquationSeparate(modeRGB, modeAlpha);
-	return 0;
 }
 
-int GLES2Parser::parse_glBlendFunc()
+void GLES2Parser::parse_glBlendFunc()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum sfactor = buffer.fetch_GLenum();
 	GLenum dfactor = buffer.fetch_GLenum();
 	DBG_PRINT("sfactor %d, dfactor %d\n", sfactor, dfactor);
 	glBlendFunc(sfactor, dfactor);
-	return 0;
 }
 
-int GLES2Parser::parse_glBlendFuncSeparate()
+void GLES2Parser::parse_glBlendFuncSeparate()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum srcRGB = buffer.fetch_GLenum();
@@ -525,10 +514,9 @@ int GLES2Parser::parse_glBlendFuncSeparate()
 	GLenum dstAlpha = buffer.fetch_GLenum();
 	DBG_PRINT("srcRGB %d, dstRGB %d, srcAlpha %d, dstAlpha %d\n", srcRGB, dstRGB, srcAlpha, dstAlpha);
 	glBlendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha);
-	return 0;
 }
 
-int GLES2Parser::parse_glBindAttribLocation()
+void GLES2Parser::parse_glBindAttribLocation()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint program = buffer.fetch_GLuint();
@@ -541,44 +529,37 @@ int GLES2Parser::parse_glBindAttribLocation()
 
 	free(name);
 
-	return 0;
 }
 
-int GLES2Parser::parse_glGenTextures()
+void GLES2Parser::parse_glGenTextures()
 {
 	int i;
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLsizei n = buffer.fetch_GLsizei();
 	GLuint* textures = (GLuint*)returnAddress;
 	glGenTextures(n, textures);
-	showError();
 
-	return 0;
 
 }
 
-int GLES2Parser::parse_glActiveTexture()
+void GLES2Parser::parse_glActiveTexture()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum texture = buffer.fetch_GLenum();
 	DBG_PRINT("texture %d\n", texture);
 	glActiveTexture(texture);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glBindTexture()
+void GLES2Parser::parse_glBindTexture()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
 	GLuint texture = buffer.fetch_GLuint();
 	DBG_PRINT("target %d, texture %d\n", target, texture);
 	glBindTexture(target, texture);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glFramebufferTexture2D()
+void GLES2Parser::parse_glFramebufferTexture2D()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
@@ -589,20 +570,17 @@ int GLES2Parser::parse_glFramebufferTexture2D()
 
 	DBG_PRINT("target %d, attachment %d, textarget %d, texture %d, level %d", target, attachment, textarget, texture, level);
 	glFramebufferTexture2D(target, attachment, textarget, texture, level);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glIsTexture()
+void GLES2Parser::parse_glIsTexture()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint texture = buffer.fetch_GLuint();
 	DBG_PRINT("texture %d", texture);
 	glIsTexture(texture);
-	return 0;
 }
 
-int GLES2Parser::parse_glDeleteTextures()
+void GLES2Parser::parse_glDeleteTextures()
 {
 	int i;
 	DBG_PRINT("(%s)\n", __FUNCTION__);
@@ -615,24 +593,24 @@ int GLES2Parser::parse_glDeleteTextures()
 		DBG_PRINT(" %d \n", tex);
 	}
 	glDeleteTextures(n, textures);
-	showError();
 
 	delete[]textures;
-	return 0;
 }
 
-int GLES2Parser::parse_glBufferData()
+void GLES2Parser::parse_glBufferData()
 {
-	//TODO:
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
 	GLsizeiptr size = buffer.fetch_GLsizeiptr();
 	GLenum usage = buffer.fetch_GLenum();
-    return 0;
+	char* data = new char[size];
+	buffer.fetchBufferWrappedBytes(data, size);
+	glBufferData(target, size, data, usage);
+	//delete []data;
 }
 
 
-int GLES2Parser::parse_glBufferSubData()
+void GLES2Parser::parse_glBufferSubData()
 {
 	//TODO:
 	DBG_PRINT("(%s)\n", __FUNCTION__);
@@ -640,53 +618,44 @@ int GLES2Parser::parse_glBufferSubData()
 
 	GLsizeiptr size = buffer.fetch_GLsizeiptr();
 
-	return 0;
 }
 
-int GLES2Parser::parse_glCheckFramebufferStatus()
+void GLES2Parser::parse_glCheckFramebufferStatus()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
 	DBG_PRINT("target %d\n", target);
 	glCheckFramebufferStatus(target);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glBindBuffer()
+void GLES2Parser::parse_glBindBuffer()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
 	GLuint buf = buffer.fetch_GLuint();
 	DBG_PRINT("target %d, buffer %d\n", target, buf);
 	glBindBuffer(target, buf);
-	showError();
-	return 0;
 }
 
-int	GLES2Parser::parse_glBindFramebuffer()
+void GLES2Parser::parse_glBindFramebuffer()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
 	GLuint framebuffer = buffer.fetch_GLuint();
 	DBG_PRINT("target %d, framebuffer %d\n", target, framebuffer);
 	glBindFramebuffer(target, framebuffer);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glBindRenderbuffer()
+void GLES2Parser::parse_glBindRenderbuffer()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
 	GLuint renderbuffer = buffer.fetch_GLuint();
 	DBG_PRINT("target %d, renderbuffer %d\n", target, renderbuffer);
 	glBindRenderbuffer(target, renderbuffer);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glColorMask()
+void GLES2Parser::parse_glColorMask()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint red = buffer.fetch_GLuint();
@@ -695,10 +664,9 @@ int GLES2Parser::parse_glColorMask()
 	GLuint alpha = buffer.fetch_GLuint();
 	DBG_PRINT("red %d, green %d, blue %d, alpha %d\n", red, green, blue, alpha);
 	glColorMask(red, green, blue, alpha);
-	return 0;
 }
 
-int GLES2Parser::parse_glCompressedTexImage2D()
+void GLES2Parser::parse_glCompressedTexImage2D()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
@@ -711,10 +679,9 @@ int GLES2Parser::parse_glCompressedTexImage2D()
 	//TODO: const GLvoid* data
 	//DBG_PRINT("");
 	//glCompressedTexImage2();
-	return 0;
 }
 
-int GLES2Parser::parse_glCompressedTexSubImage2D()
+void GLES2Parser::parse_glCompressedTexSubImage2D()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
@@ -728,10 +695,9 @@ int GLES2Parser::parse_glCompressedTexSubImage2D()
 	//TODO: const GLvoid* data
 	//DBG_PRINT("");
 	//glCompressedTexSubImage2D();
-	return 0;
 }
 
-int GLES2Parser::parse_glCopyTexImage2D()
+void GLES2Parser::parse_glCopyTexImage2D()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
@@ -744,10 +710,9 @@ int GLES2Parser::parse_glCopyTexImage2D()
 	GLint border = buffer.fetch_GLint();
 	DBG_PRINT("target %d, level %d, internalformat %d, x %d, y %d, width %d, height %d, border %d", target, level, internalformat, x, y, width, height, border);
 	glCopyTexImage2D(target, level, internalformat, x, y, width, height, border);
-	return 0;
 }
 
-int GLES2Parser::parse_glCopyTexSubImage2D()
+void GLES2Parser::parse_glCopyTexSubImage2D()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
@@ -760,10 +725,9 @@ int GLES2Parser::parse_glCopyTexSubImage2D()
 	GLsizei height = buffer.fetch_GLsizei();
 	DBG_PRINT("target %d, level %d, xoffset %d, yoffset %d, x %d, y %d, width %d, height %d\n", target, level, xoffset, yoffset, x, y, width, height);
 	glCopyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);
-	return 0;
 }
 
-int GLES2Parser::parse_glDeleteBuffers()
+void GLES2Parser::parse_glDeleteBuffers()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 
@@ -778,10 +742,9 @@ int GLES2Parser::parse_glDeleteBuffers()
 	}
 	glDeleteBuffers(n, lengths);
 	delete[]lengths;
-	return 0;
 }
 
-int	GLES2Parser::parse_glDeleteFramebuffers()
+void GLES2Parser::parse_glDeleteFramebuffers()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 
@@ -796,10 +759,9 @@ int	GLES2Parser::parse_glDeleteFramebuffers()
 	}
 	glDeleteFramebuffers(n, lengths);
 	delete[]lengths;
-	return 0;
 }
 
-int GLES2Parser::parse_glDeleteRenderbuffers()
+void GLES2Parser::parse_glDeleteRenderbuffers()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 
@@ -814,52 +776,48 @@ int GLES2Parser::parse_glDeleteRenderbuffers()
 	}
 	glDeleteRenderbuffers(n, lengths);
 	delete[]lengths;
-	return 0;
 }
 
-int GLES2Parser::parse_glDepthFunc()
+void GLES2Parser::parse_glDepthFunc()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum func = buffer.fetch_GLenum();
 	DBG_PRINT("func %d\n", func);
 	glDepthFunc(func);
-	return 0;
 }
 
-int GLES2Parser::parse_glDepthMask()
+void GLES2Parser::parse_glDepthMask()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO:
-	return 0;
 }
 
-int GLES2Parser::parse_glDepthRangef()
+void GLES2Parser::parse_glDepthRangef()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO:
-	return 0;
 }
 
-int GLES2Parser::parse_glDetachShader()
+void GLES2Parser::parse_glDetachShader()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint program = buffer.fetch_GLuint();
 	GLuint shader = buffer.fetch_GLuint();
 	DBG_PRINT("program %d, shader %d\n", program, shader);
 	glDetachShader(program, shader);
-	return 0;
 }
 
-int GLES2Parser::parse_glDisableVertexAttribArray()
+void GLES2Parser::parse_glDisableVertexAttribArray()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint index = buffer.fetch_GLuint();
 	DBG_PRINT("index %d", index);
+	AttribPointer* ptr = findAttribute(index, true);
+	ptr->enabled = false;
 	glDisableVertexAttribArray(index);
-	return 0;
 }
 
-int GLES2Parser::parse_glFramebufferRenderbuffer()
+void GLES2Parser::parse_glFramebufferRenderbuffer()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
@@ -868,53 +826,44 @@ int GLES2Parser::parse_glFramebufferRenderbuffer()
 	GLuint renderbuffer = buffer.fetch_GLuint();
 	DBG_PRINT("target %d, attachment %d, renderbuffertarget %d, renderbuffer %d\n", target, attachment, renderbuffertarget, renderbuffer);
 	glFramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer);
-	return 0;
 }
 
-int GLES2Parser::parse_glGenBuffers()
+void GLES2Parser::parse_glGenBuffers()
 {
 	int i;
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLsizei n = buffer.fetch_GLsizei();
 	GLuint* buffers = (GLuint*)returnAddress;
 	glGenBuffers(n, buffers);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glGenerateMipmap()
+void GLES2Parser::parse_glGenerateMipmap()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
 	DBG_PRINT("target %d", target);
 	glGenerateMipmap(target);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glGenFramebuffers()
+void GLES2Parser::parse_glGenFramebuffers()
 {
 	int i;
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLsizei n = buffer.fetch_GLsizei();
 	GLuint* buffers = (GLuint*)returnAddress;
 	glGenFramebuffers(n, buffers);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glGenRenderbuffers()
+void GLES2Parser::parse_glGenRenderbuffers()
 {
 	int i;
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLsizei n = buffer.fetch_GLsizei();
 	GLuint* buffers = (GLuint*)returnAddress;
 	glGenRenderbuffers(n, buffers);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glGetActiveAttrib()
+void GLES2Parser::parse_glGetActiveAttrib()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLsizei* length, GLint* size, GLenum* type, GLchar* name
@@ -922,220 +871,283 @@ int GLES2Parser::parse_glGetActiveAttrib()
 	GLuint index = buffer.fetch_GLuint();
 	GLsizei bufsize = buffer.fetch_GLsizei();
 
-	return 0;
+	GLsizei length;
+	GLint size;
+	GLenum type;
+	GLchar name[256];
+	glGetActiveAttrib(program, index, bufsize, &length, &size, &type, name);
+	
+	GLint* retVals = (GLint*)returnAddress;
+	retVals[0]=length;
+	retVals[1]=size;
+	retVals[2]=type;
+	memcpy(&retVals[3],name,length+1);
+
 }
 
-int GLES2Parser::parse_glGetActiveUniform()
+void GLES2Parser::parse_glGetActiveUniform()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
-	//TODO: GLuint program, GLuint index, GLsizei bufsize, GLsizei* length, GLint* size, GLenum* type, GLchar* name
-	return 0;
+	GLuint program = buffer.fetch_GLuint();
+	GLuint index = buffer.fetch_GLuint();
+	GLsizei bufsize = buffer.fetch_GLsizei();
+
+	GLsizei length;
+	GLint size;
+	GLenum type;
+	GLchar name[256];
+	glGetActiveUniform(program, index, bufsize, &length, &size, &type, name);
+	
+	GLint* retVals = (GLint*)returnAddress;
+	retVals[0]=length;
+	retVals[1]=size;
+	retVals[2]=type;
+	memcpy(&retVals[3],name,length+1);
 }
 
-int GLES2Parser::parse_glGetAttachedShaders()
+void GLES2Parser::parse_glGetAttachedShaders()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLuint program, GLsizei maxcount, GLsizei* count, GLuint* shaders
-	return 0;
 }
 
-int GLES2Parser::parse_glGetBooleanv()
+void GLES2Parser::parse_glGetBooleanv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLenum pname, GLboolean* params
-	return 0;
 }
 
-int GLES2Parser::parse_glGetBufferParameteriv()
+void GLES2Parser::parse_glGetBufferParameteriv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLenum target, GLenum pname, GLint* params
-	return 0;
 }
 
-int GLES2Parser::parse_glGetFloatv()
+void GLES2Parser::parse_glGetFloatv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLenum pname, GLfloat* params
-	return 0;
 }
 
-int GLES2Parser::parse_glGetFramebufferAttachmentParameteriv()
+void GLES2Parser::parse_glGetFramebufferAttachmentParameteriv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLenum target, GLenum attachment, GLenum pname, GLint* params
-	return 0;
 }
 
-int	GLES2Parser::parse_glGetIntegerv()
+void GLES2Parser::parse_glGetIntegerv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
-	//TODO:GLenum pname, GLint* params
-	return 0;
+
+	bool supported = true;
+
+	GLenum pname = buffer.fetch_GLenum();
+	DBG_PRINT("pname 0x%04x\n", pname);	
+	int paramCount = 1;
+	GLint* vals = (GLint*)returnAddress;
+	switch (pname) {
+		case GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES:
+		case GL_IMPLEMENTATION_COLOR_READ_TYPE_OES:
+			paramCount = 1;
+			supported = false;
+			vals[1] = GL_RGBA;
+			break;
+		case GL_SHADER_BINARY_FORMATS:
+			paramCount = 0;
+			supported = false;
+			break;
+		case GL_NUM_SHADER_BINARY_FORMATS:
+			paramCount = 1;
+			supported = false;
+			vals[1] = 0;
+			break;
+		case 0x8DFB:
+		case 0x8DFC:
+		case 0x8DFD:
+			paramCount = 1;
+			supported = false;
+			vals[1] = 5;
+			break;
+		case GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS:
+		case GL_MAX_CUBE_MAP_TEXTURE_SIZE:
+		case GL_MAX_TEXTURE_SIZE:
+		case GL_MAX_TEXTURE_IMAGE_UNITS:
+		case GL_MAX_RENDERBUFFER_SIZE:
+			//case GL_MAX_VARYING_VECTORS:
+		case GL_MAX_VERTEX_ATTRIBS:
+			//case GL_MAX_VERTEX_UNIFORM_VECTORS:
+			//case GL_MAX_FRAGMENT_UNIFORM_VECTORS:
+		case GL_NUM_COMPRESSED_TEXTURE_FORMATS:
+		case GL_SUBPIXEL_BITS:
+		case GL_RED_BITS:
+		case GL_GREEN_BITS:
+		case GL_BLUE_BITS:
+		case GL_ALPHA_BITS:  
+		case GL_DEPTH_BITS:
+		case GL_STENCIL_BITS: 
+			paramCount = 1;
+			break;
+		case GL_MAX_VIEWPORT_DIMS:
+			paramCount = 2;
+			break;
+		default:
+			DBG_PRINT("unimplemented pname 0x%04x\n",pname);
+			paramCount =1;
+			break;
+	}
+	vals[0] = paramCount;
+	if (supported)
+		glGetIntegerv(pname, &vals[1]);
+	showError();	
 }
 
-int GLES2Parser::parse_glGetRenderbufferParameteriv()
+void GLES2Parser::parse_glGetRenderbufferParameteriv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLenum target, GLenum pname, GLint* params
-	return 0;
 }
 
-int GLES2Parser::parse_glGetShaderPrecisionFormat()
+void GLES2Parser::parse_glGetShaderPrecisionFormat()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLenum shadertype, GLenum precisiontype, GLint* range, GLint* precision
-	return 0;
 }
 
-int GLES2Parser::parse_glGetShaderSource()
+void GLES2Parser::parse_glGetShaderSource()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLuint shader, GLsizei bufsize, GLsizei* length, GLchar* source
-	return 0;
 }
 
-int GLES2Parser::parse_glGetTexParameterfv()
+void GLES2Parser::parse_glGetTexParameterfv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLenum target, GLenum pname, GLfloat* params
-	return 0;
 }
 
-int GLES2Parser::parse_glGetTexParameteriv()
+void GLES2Parser::parse_glGetTexParameteriv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
-    //TODO: GLenum target, GLenum pname, GLint* params
-	return 0;
+	//TODO: GLenum target, GLenum pname, GLint* params
 }
 
-int GLES2Parser::parse_glGetUniformfv()
+void GLES2Parser::parse_glGetUniformfv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLuint program, GLint location, GLfloat* params
-	return 0;
 }
 
-int GLES2Parser::parse_glGetUniformiv()
+void GLES2Parser::parse_glGetUniformiv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLuint program, GLint location, GLint* params
-	return 0;
 }
 
-int GLES2Parser::parse_glGetVertexAttribfv()
+void GLES2Parser::parse_glGetVertexAttribfv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLuint index, GLenum pname, GLfloat* params
-	return 0;
 }
 
-int GLES2Parser::parse_glGetVertexAttribiv()
+void GLES2Parser::parse_glGetVertexAttribiv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLuint index, GLenum pname, GLint* params
-	return 0;
 }
 
-int GLES2Parser::parse_glGetVertexAttribPointerv()
+void GLES2Parser::parse_glGetVertexAttribPointerv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO: GLuint index, GLenum pname, GLvoid** pointer
-	return 0;
 }
 
-int GLES2Parser::parse_glIsBuffer()
+void GLES2Parser::parse_glIsBuffer()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint buf = buffer.fetch_GLuint();
 	DBG_PRINT("buffer %d\n", buf);
 	GLboolean isBuff = glIsBuffer(buf);
-	return isBuff;
+	setReturnVal(isBuff);
 }
 
-int GLES2Parser::parse_glIsEnabled()
+void GLES2Parser::parse_glIsEnabled()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum cap = buffer.fetch_GLenum();
 	GLboolean isEnable = glIsEnabled(cap);
-	return isEnable;
+	setReturnVal(isEnable);
 }
 
-int GLES2Parser::parse_glIsFramebuffer()
+void GLES2Parser::parse_glIsFramebuffer()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint framebuffer = buffer.fetch_GLuint();
 	GLboolean isFramebuff = glIsFramebuffer(framebuffer);
-	return isFramebuff;
+	setReturnVal(isFramebuff);
 }
 
-int GLES2Parser::parse_glIsProgram()
+void GLES2Parser::parse_glIsProgram()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint program = buffer.fetch_GLuint();
 	GLboolean isProg = glIsProgram(program);
-	return isProg;
+	setReturnVal(isProg);
 }
 
-int GLES2Parser::parse_glIsRenderbuffer()
+void GLES2Parser::parse_glIsRenderbuffer()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint renderbuffer = buffer.fetch_GLuint();
 	GLboolean isRendbuff = glIsRenderbuffer(renderbuffer);
-	return isRendbuff;
 }
 
-int GLES2Parser::parse_glIsShader()
+void GLES2Parser::parse_glIsShader()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint shader = buffer.fetch_GLuint();
-	GLboolean isShade = glIsShader(shader);
-	return isShade;
+	GLboolean isShader = glIsShader(shader);
+	setReturnVal(isShader);
 }
 
-int GLES2Parser::parse_glLineWidth()
+void GLES2Parser::parse_glLineWidth()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLfloat width = buffer.fetch_GLclampfValue_32();
 	DBG_PRINT("width %f\n", width);
 	glLineWidth(width);
-	return 0;
 }
 
-int GLES2Parser::parse_glPixelStorei()
+void GLES2Parser::parse_glPixelStorei()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum pname = buffer.fetch_GLenum();
 	GLint param = buffer.fetch_GLint();
+	glPixelStorei(pname, param);
 	DBG_PRINT("pname %d, param %d\n", pname, param);
-	return 0;
 }
 
-int GLES2Parser::parse_glPolygonOffset()
+void GLES2Parser::parse_glPolygonOffset()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLfloat factor = buffer.fetch_GLclampfValue_32();
 	GLfloat units = buffer.fetch_GLclampfValue_32();
 	DBG_PRINT("factor %f, units %f\n", factor, units);
 	glPolygonOffset(factor, units);
-	return 0;
 }
 
-int GLES2Parser::parse_glReadPixels()
+void GLES2Parser::parse_glReadPixels()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO:
-	return 0;
 }
 
-int GLES2Parser::parse_glReleaseShaderCompiler()
+void GLES2Parser::parse_glReleaseShaderCompiler()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO:
-	return 0;
 }
 
-int GLES2Parser::parse_glRenderbufferStorage()
+void GLES2Parser::parse_glRenderbufferStorage()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
@@ -1144,11 +1156,9 @@ int GLES2Parser::parse_glRenderbufferStorage()
 	GLsizei height = buffer.fetch_GLsizei();
 	DBG_PRINT("target %d, internalformat %04x, width %d, height %d\n", target, internalformat, width, height);
 	glRenderbufferStorage(target, internalformat, width, height);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glScissor()
+void GLES2Parser::parse_glScissor()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLint x = buffer.fetch_GLint();
@@ -1157,17 +1167,15 @@ int GLES2Parser::parse_glScissor()
 	GLsizei height = buffer.fetch_GLsizei();
 	DBG_PRINT("x %d, y %d, width %d, height %d\n", x, y, width, height);
 	glScissor(x, y, width, height);
-	return 0;
 }
 
-int GLES2Parser::parse_glShaderBinary()
+void GLES2Parser::parse_glShaderBinary()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	//TODO:
-	return 0;
 }
 
-int GLES2Parser::parse_glStencilFuncSeparate()
+void GLES2Parser::parse_glStencilFuncSeparate()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum face = buffer.fetch_GLenum();
@@ -1176,29 +1184,26 @@ int GLES2Parser::parse_glStencilFuncSeparate()
 	GLuint mask = buffer.fetch_GLuint();
 	DBG_PRINT("face %d, func %d, ref %d, mask %d\n", face, func, ref, mask);
 	glStencilFuncSeparate(face, func, ref, mask);
-	return 0;
 }
 
-int GLES2Parser::parse_glStencilMask()
+void GLES2Parser::parse_glStencilMask()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum mask = buffer.fetch_GLenum();
 	DBG_PRINT("mask %d\n", mask);
 	glStencilMask(mask);
-	return 0;
 }
 
-int GLES2Parser::parse_glStencilMaskSeparate()
+void GLES2Parser::parse_glStencilMaskSeparate()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum face = buffer.fetch_GLenum();
 	GLuint mask = buffer.fetch_GLuint();
 	DBG_PRINT("face %d, mask %d\n", face, mask);
 	glStencilMaskSeparate(face, mask);
-	return 0;
 }
 
-int GLES2Parser::parse_glStencilOp()
+void GLES2Parser::parse_glStencilOp()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum fail = buffer.fetch_GLenum();
@@ -1206,10 +1211,9 @@ int GLES2Parser::parse_glStencilOp()
 	GLenum zpass = buffer.fetch_GLenum();
 	DBG_PRINT("fail %d, zfail %d, zpass %d\n", fail, zfail, zpass);
 	glStencilOp(fail, zfail, zpass);
-	return 0;
 }
 
-int GLES2Parser::parse_glStencilOpSeparate()
+void GLES2Parser::parse_glStencilOpSeparate()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum face = buffer.fetch_GLenum();
@@ -1218,29 +1222,74 @@ int GLES2Parser::parse_glStencilOpSeparate()
 	GLenum zpass = buffer.fetch_GLenum();
 	DBG_PRINT("face %d, fail %d, zfail %d, zpass %d\n", face, fail, zfail, zpass);
 	glStencilOpSeparate(face, fail, zfail, zpass);
-	return 0;
 }
 static int texnum = 1;
 void writeTexture(GLsizei width, GLsizei height, GLenum type, unsigned char* texture) {
 	char fileName[256];
-	sprintf(fileName, "texture%d.pbm",texnum++);
+	sprintf(fileName, "texture%d_%d.pbm",texnum++, type);
 	FILE* fd = fopen(fileName,"w");
 
 	char buf[32];
-	if (type == GL_RGBA) 
+	if (type == GL_RGBA || type == 1) 
 	{
 		sprintf(buf, "P3\n%d %d\n255\n",width,height);
 		fwrite(buf, 1, strlen(buf),fd);	
 		for (int i=0;i<height;i++) {
 
 			for (int j=0;j<width;j++) {
-				sprintf(buf,"%d %d %d ",*texture++, *texture++, *texture++);
+				int r = *texture++;
+				int g = *texture++;
+				int b = *texture++;
+				sprintf(buf,"%d %d %d ",r, g, b);
 				texture++; // dump alpha - we don't care
 				fwrite(buf, 1, strlen(buf),fd);	
 			}
 			sprintf(buf, "\n");
 			fwrite(buf, 1, strlen(buf), fd);
 		}
+	} else if (type == GL_RGB || type == 2) {
+		sprintf(buf, "P3\n%d %d\n255\n",width,height);
+		fwrite(buf, 1, strlen(buf),fd);	
+		for (int i=0;i<height;i++) {
+
+			for (int j=0;j<width;j++) {
+				int r = *texture++;
+				int g = *texture++;
+				int b = *texture++;
+				sprintf(buf,"%d %d %d ",r, g, b);
+				fwrite(buf, 1, strlen(buf),fd);	
+			}
+			sprintf(buf, "\n");
+			fwrite(buf, 1, strlen(buf), fd);
+		}
+	} else if (type == GL_UNSIGNED_SHORT_5_6_5 || type == 4)  {
+		sprintf(buf, "P3\n%d %d\n255\n",width,height);
+		fwrite(buf, 1, strlen(buf),fd);	
+		unsigned short* ptr = (unsigned short*)texture;
+		for (int i=0;i<height;i++) {
+			
+			for (int j=0;j<width;j++) {
+				unsigned short a = *ptr++;
+				unsigned short r = (a & 0xF800) >11;
+				unsigned short g = (a & 0x07E0) >5;
+				unsigned short b = (a & 0x001F);
+
+				r <<= 3;
+				g <<= 2;
+				b <<= 3;
+				sprintf(buf,"%u %u %u ",r, g, b);
+				fwrite(buf, 1, strlen(buf),fd);	
+			}
+			sprintf(buf, "\n");
+			fwrite(buf, 1, strlen(buf), fd);
+		}
+
+
+
+
+
+
+
 	} else {
 		sprintf(buf, "P3\n%d %d\n255\n",width,height);
 		fwrite(buf, 1, strlen(buf),fd);	
@@ -1257,9 +1306,9 @@ void writeTexture(GLsizei width, GLsizei height, GLenum type, unsigned char* tex
 	fclose(fd);
 }
 
-int GLES2Parser::parse_glTexImage2D()
+void GLES2Parser::parse_glTexImage2D()
 {
-	DBG_PRINT("(%s)\n", __FUNCTION__);
+	DBG_PRINTV("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
 	GLint level = buffer.fetch_GLint();
 	GLenum internalFormat = buffer.fetch_GLenum();
@@ -1269,22 +1318,20 @@ int GLES2Parser::parse_glTexImage2D()
 	GLenum format = buffer.fetch_GLenum();
 	GLenum type = buffer.fetch_GLenum();
 	GLint size = buffer.fetch_GLint();
-	DBG_PRINT("texture %04x %04x %04x w:%d h:%d border:%d, format:%04x, type:%04x, size: %d\n",target, level, internalFormat, width, height, border, format, type, size);
+	DBG_PRINTV("texture %04x %04x %04x w:%d h:%d border:%d, format:%04x, type:%04x, size: %d\n",target, level, internalFormat, width, height, border, format, type, size);
 
 	char* texture = NULL;
-	if (size!=0) {
+	if (size>0) {
 		texture = new char[size];
 		buffer.fetchBufferWrappedBytes(texture, size);
 		//writeTexture(width, height, format, (unsigned char*)texture);
 	}
 	DBG_PRINT("texture pointer 0x%08x\n",(unsigned int) texture);
 	glTexImage2D(target,level,internalFormat, width, height, border, format, type, texture);
-	showError();
 	//delete[]texture;
-	return 0;
 }
 
-int GLES2Parser::parse_glTexParameterf()
+void GLES2Parser::parse_glTexParameterf()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
@@ -1292,10 +1339,18 @@ int GLES2Parser::parse_glTexParameterf()
 	GLfloat param = buffer.fetch_GLclampfValue_32();
 	DBG_PRINT("target %d, pname %d, param %f\n", target, pname, param);
 	glTexParameterf(target, pname, param);
-	return 0;
 }
 
-int GLES2Parser::parse_glTexParameterfv()
+void GLES2Parser::parse_glTexParameterx()
+{
+	DBG_PRINT("(%s)\n", __FUNCTION__);
+	GLenum target = buffer.fetch_GLenum();
+	GLenum pname = buffer.fetch_GLenum();
+	GLfloat param = buffer.fetch_GLclampxValue_32();
+	DBG_PRINT("target %d, pname %d, param %f\n", target, pname, param);
+	glTexParameterf(target, pname, param);
+}
+void GLES2Parser::parse_glTexParameterfv()
 {
 	int i;
 	DBG_PRINT("(%s)\n", __FUNCTION__);
@@ -1308,10 +1363,9 @@ int GLES2Parser::parse_glTexParameterfv()
 		DBG_PRINT("target %d, pname %d, params %f\n", target, pname, params[i]);
 	}
 	glTexParameterfv(target, pname, params);
-	return 0;
 }
 
-int GLES2Parser::parse_glTexParameteri()
+void GLES2Parser::parse_glTexParameteri()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
@@ -1319,10 +1373,9 @@ int GLES2Parser::parse_glTexParameteri()
 	GLint param = buffer.fetch_GLint();
 	DBG_PRINT("target %d, pname %d, param %d\n", target, pname, param);
 	glTexParameteri(target, pname, param);
-	return 0;
 }
 
-int GLES2Parser::parse_glTexParameteriv()
+void GLES2Parser::parse_glTexParameteriv()
 {
 	int i;
 	DBG_PRINT("(%s)\n", __FUNCTION__);
@@ -1335,12 +1388,11 @@ int GLES2Parser::parse_glTexParameteriv()
 		DBG_PRINT("target %d, pname %d, params %d\n", target, pname, params[i]);
 	}
 	glTexParameteriv(target, pname, params);
-	return 0;
 }
 
-int GLES2Parser::parse_glTexSubImage2D()
+void GLES2Parser::parse_glTexSubImage2D()
 {
-	DBG_PRINT("(%s)\n", __FUNCTION__);
+	DBG_PRINTV("(%s)\n", __FUNCTION__);
 	GLenum target = buffer.fetch_GLenum();
 	GLint level = buffer.fetch_GLint();
 	GLint xoffset = buffer.fetch_GLint();
@@ -1350,21 +1402,19 @@ int GLES2Parser::parse_glTexSubImage2D()
 	GLenum format = buffer.fetch_GLenum();
 	GLenum type = buffer.fetch_GLenum();
 	GLint size = buffer.fetch_GLint();
-	DBG_PRINT("texture %04x %04x %04x %04x w:%d h:%d, format:%04x, type:%04x, size: %d\n",target, level, xoffset, yoffset, width, height, format, type, size);
+	DBG_PRINTV("texture %04x %04x %04x %04x w:%d h:%d, format:%04x, type:%04x, size: %d\n",target, level, xoffset, yoffset, width, height, format, type, size);
 
 	char* texture = NULL;
 	if (size!=0) {
-		char* texture = new char[size];
+		texture = new char[size];
 		buffer.fetchBufferWrappedBytes(texture, size);
-		writeTexture(width, height, format, (unsigned char*)texture);
+		//writeTexture(width, height, format, (unsigned char*)texture);
 	}
 	glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, texture);
-	showError();
 	//delete[]texture;
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform1f()
+void GLES2Parser::parse_glUniform1f()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLint location = buffer.fetch_GLint();
@@ -1372,11 +1422,9 @@ int GLES2Parser::parse_glUniform1f()
 	DBG_PRINT("location %d, x %f\n", location, x);
 	if (location>=0)
 		glUniform1f(location, x);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform1fv()
+void GLES2Parser::parse_glUniform1fv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLint location = buffer.fetch_GLint();
@@ -1385,20 +1433,18 @@ int GLES2Parser::parse_glUniform1fv()
 	buffer.fetchBufferWrappedBytes((void*)v, count*sizeof(GLfloat));
 	//DBG_PRINT("location %d, count %d, v %f", location, count, v);
 	glUniform1fv(location, count, v);
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform1i()
+void GLES2Parser::parse_glUniform1i()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLint location = buffer.fetch_GLint();
 	GLint x = buffer.fetch_GLint();
 	DBG_PRINT("location %d, x %d\n", location, x);
 	glUniform1i(location, x);
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform1iv()
+void GLES2Parser::parse_glUniform1iv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLint location = buffer.fetch_GLint();
@@ -1407,10 +1453,9 @@ int GLES2Parser::parse_glUniform1iv()
 	buffer.fetchBufferWrappedBytes((void*)data, count*sizeof(GLint));
 	//DBG_PRINT("location %d, count %d, data %f", location, count, data);
 	glUniform1iv(location, count, data);
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform2f()
+void GLES2Parser::parse_glUniform2f()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLint location = buffer.fetch_GLint();
@@ -1418,11 +1463,9 @@ int GLES2Parser::parse_glUniform2f()
 	GLfloat y = buffer.fetch_GLclampfValue_32();
 	DBG_PRINT("location %d, x %f, y %f\n", location, x, y);
 	glUniform2f(location, x, y);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform2fv()
+void GLES2Parser::parse_glUniform2fv()
 {
 	int i;
 	DBG_PRINT("(%s)\n", __FUNCTION__);
@@ -1434,11 +1477,9 @@ int GLES2Parser::parse_glUniform2fv()
 		DBG_PRINT("%d %f %f\n", i/2, data[i], data[i+1]);
 	}
 	glUniform2fv(location, count, data);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform2i()
+void GLES2Parser::parse_glUniform2i()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLint location = buffer.fetch_GLint();
@@ -1446,11 +1487,9 @@ int GLES2Parser::parse_glUniform2i()
 	GLint y = buffer.fetch_GLint();
 	DBG_PRINT("location %d, x %d, y %d\n", location, x, y);
 	glUniform2i(location, x, y);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform2iv()
+void GLES2Parser::parse_glUniform2iv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	int i;
@@ -1462,11 +1501,9 @@ int GLES2Parser::parse_glUniform2iv()
 		DBG_PRINT("%d %d %d \n", i/2, data[i], data[i+1]);
 	}
 	glUniform2iv(location, count, data);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform3f()
+void GLES2Parser::parse_glUniform3f()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLint location = buffer.fetch_GLint();
@@ -1475,11 +1512,9 @@ int GLES2Parser::parse_glUniform3f()
 	GLfloat z = buffer.fetch_GLclampfValue_32();
 	DBG_PRINT("location %d, x %f, y %f, z %f\n", location, x, y, z);
 	glUniform3f(location, x, y, z);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform3i()
+void GLES2Parser::parse_glUniform3i()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLint location = buffer.fetch_GLint();
@@ -1488,11 +1523,9 @@ int GLES2Parser::parse_glUniform3i()
 	GLint z = buffer.fetch_GLint();
 	DBG_PRINT("location %d, x %d, y %d, z %d\n", location, x, y, z);
 	glUniform3i(location, x, y, z);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform3iv()
+void GLES2Parser::parse_glUniform3iv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	int i;
@@ -1504,11 +1537,9 @@ int GLES2Parser::parse_glUniform3iv()
 		DBG_PRINT("%d %d %d %d\n", i/3, data[i], data[i+1], data[i+2]);
 	}
 	glUniform3iv(location, count, data);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform4f()
+void GLES2Parser::parse_glUniform4f()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLint location = buffer.fetch_GLint();
@@ -1518,11 +1549,9 @@ int GLES2Parser::parse_glUniform4f()
 	GLfloat w = buffer.fetch_GLclampfValue_32();
 	DBG_PRINT("location %d, x %f ,y %f ,z %f ,w %f \n", location, x, y, z, w);
 	glUniform4f(location, x, y, z, w);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform4fv()
+void GLES2Parser::parse_glUniform4fv()
 {
 
 	DBG_PRINT("(%s)\n", __FUNCTION__);
@@ -1531,15 +1560,13 @@ int GLES2Parser::parse_glUniform4fv()
 	GLint count = buffer.fetch_GLint();
 	GLfloat* data = new GLfloat[count*4];
 	buffer.fetchBufferWrappedBytes((void*)data, count*4*sizeof(GLfloat));
-	for (i=0;i<count*4;i+=4) {
-		DBG_PRINT("%d %f %f %f %f\n", i/4, data[i], data[i+1], data[i+2], data[i+3]);
-	}
+/*	for (i=0;i<count*4;i+=4) {
+		DBG_PRINTV("%d %f %f %f %f\n", i/4, data[i], data[i+1], data[i+2], data[i+3]);
+	}*/
 	glUniform4fv(location, count, data);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform4i()
+void GLES2Parser::parse_glUniform4i()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLint location = buffer.fetch_GLint();
@@ -1549,11 +1576,9 @@ int GLES2Parser::parse_glUniform4i()
 	GLint w = buffer.fetch_GLint();
 	DBG_PRINT("location %d, x %d, y %d, z %d, w %d\n", location, x, y, z, w);
 	glUniform4i(location, x, y, z, w);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glUniform4iv()
+void GLES2Parser::parse_glUniform4iv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	int i;
@@ -1565,44 +1590,38 @@ int GLES2Parser::parse_glUniform4iv()
 		DBG_PRINT("%d %d %d %d %d\n", i/4, data[i], data[i+1], data[i+2], data[i+3]);
 	}
 	glUniform4iv(location, count, data);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glUniformMatrix2fv()
+void GLES2Parser::parse_glUniformMatrix2fv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 
-	return 0;
 }
 
-int GLES2Parser::parse_glUniformMatrix3fv()
+void GLES2Parser::parse_glUniformMatrix3fv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 
-	return 0;
 }
 
-int GLES2Parser::parse_glValidateProgram()
+void GLES2Parser::parse_glValidateProgram()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint program = buffer.fetch_GLuint();
 	DBG_PRINT("program %d\n", program);
 	glValidateProgram(program);
-	return 0;
 }
 
-int GLES2Parser::parse_glVertexAttrib1f()
+void GLES2Parser::parse_glVertexAttrib1f()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint index = buffer.fetch_GLuint();
 	GLfloat x = buffer.fetch_GLclampfValue_32();
 	DBG_PRINT("index %d, x %f\n", index, x);
 	glVertexAttrib1f(index, x);
-	return 0;
 }
 
-int GLES2Parser::parse_glVertexAttrib1fv()
+void GLES2Parser::parse_glVertexAttrib1fv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint index = buffer.fetch_GLuint();
@@ -1611,10 +1630,9 @@ int GLES2Parser::parse_glVertexAttrib1fv()
 	buffer.fetchBufferWrappedBytes((void*)values, count*sizeof(GLfloat));
 	//DBG_PRINT("index %d, values %f\n", index, values);
 	glVertexAttrib1fv(index, values);
-	return 0;
 }
 
-int GLES2Parser::parse_glVertexAttrib2f()
+void GLES2Parser::parse_glVertexAttrib2f()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint index = buffer.fetch_GLuint();
@@ -1622,17 +1640,15 @@ int GLES2Parser::parse_glVertexAttrib2f()
 	GLfloat y = buffer.fetch_GLclampfValue_32();
 	DBG_PRINT("index %d, x %f, y %f\n", index, x, y);
 	glVertexAttrib2f(index, x, y);
-	return 0;
 }
 
-int GLES2Parser::parse_glVertexAttrib2fv()
+void GLES2Parser::parse_glVertexAttrib2fv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 
-	return 0;
 }
 
-int GLES2Parser::parse_glVertexAttrib3f()
+void GLES2Parser::parse_glVertexAttrib3f()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint index = buffer.fetch_GLuint();
@@ -1641,17 +1657,15 @@ int GLES2Parser::parse_glVertexAttrib3f()
 	GLfloat z = buffer.fetch_GLclampfValue_32();
 	DBG_PRINT("index %d, x %f, y %f, z %f\n", index, x, y, z);
 	glVertexAttrib3f(index, x, y, z);
-	return 0;
 }
 
-int GLES2Parser::parse_glVertexAttrib3fv()
+void GLES2Parser::parse_glVertexAttrib3fv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 
-	return 0;
 }
 
-int GLES2Parser::parse_glVertexAttrib4f()
+void GLES2Parser::parse_glVertexAttrib4f()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint index = buffer.fetch_GLuint();
@@ -1661,35 +1675,36 @@ int GLES2Parser::parse_glVertexAttrib4f()
 	GLfloat w = buffer.fetch_GLclampfValue_32();
 	DBG_PRINT("index %d, x %f, y %f, z %f, w %f\n", index, x, y, z, w);
 	glVertexAttrib4f(index, x, y, z, w);
-	return 0;
 }
 
-int GLES2Parser::parse_glVertexAttrib4fv()
+void GLES2Parser::parse_glVertexAttrib4fv()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 
-	return 0;
 }
 
-int GLES2Parser::parse_glEnable()
+void GLES2Parser::parse_glEnable()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum cap = buffer.fetch_GLenum();
+	DBG_PRINT("enable 0x%04x\n", cap);
 	glEnable(cap);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glDisable()
+void GLES2Parser::parse_glDisable()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum cap = buffer.fetch_GLenum();
 	glDisable(cap);
-	showError();
-	return 0;
 }
 
-int GLES2Parser::parse_glViewport()
+void GLES2Parser::parse_glFlush()
+{
+	DBG_PRINT("(%s)\n", __FUNCTION__);
+	glFlush();
+}
+
+void GLES2Parser::parse_glViewport()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLuint x;
@@ -1704,17 +1719,86 @@ int GLES2Parser::parse_glViewport()
 	DBG_PRINT("viewport %d %d %d %d\n",x,y,w,h);
 
 	glViewport(x,y,w,h);
-	showError();
-	return 0;
+	glutReshapeWindow(w,h);
 }
 
-int GLES2Parser::parse_glGetError()
+void GLES2Parser::parse_glGetError()
 {
 	DBG_PRINT("(%s)\n", __FUNCTION__);
 	GLenum errval = GL_NO_ERROR;
 	if (theContext != NULL) {
 		errval = theContext->getError();
 	}
-	//errval = GL_NO_ERROR;
+	errval = GL_NO_ERROR;
 	setReturnVal(errval);
+}
+
+void GLES2Parser::parse_glDrawTexiOES()
+{
+	GLint x;
+	GLint y;
+	GLint z;
+	GLint w;
+	GLint h;
+	x = buffer.fetch_GLint();
+	y = buffer.fetch_GLint();
+	z = buffer.fetch_GLint();
+	w = buffer.fetch_GLint();
+	h = buffer.fetch_GLint();
+
+	int vertPtr[12];
+	vertPtr[0] = 0;
+	vertPtr[1] = 0;
+	vertPtr[2] = z;
+	vertPtr[3] = x;
+	vertPtr[4] = 0;
+	vertPtr[5] = z;
+	vertPtr[6] = 0;
+	vertPtr[7] = h;
+	vertPtr[8] = z;
+	vertPtr[9] = w;
+	vertPtr[10] = h;
+	vertPtr[11] = z;
+
+	int tcPtr[8];
+	tcPtr[0] = 0;
+	tcPtr[1] = 0;
+	tcPtr[2] = 1;
+	tcPtr[3] = 0;
+	tcPtr[4] = 0;
+	tcPtr[5] = 1;
+	tcPtr[6] = 1;
+	tcPtr[7] = 1;
+	glEnable(GL_TEXTURE_2D);
+	glVertexPointer(3, GL_INT, 0, vertPtr);
+	glTexCoordPointer(2, GL_INT, 0, tcPtr);
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}
+
+void GLES2Parser::parse_glNativeImage2D() 
+{
+	DBG_PRINTV("(%s)\n", __FUNCTION__);
+	GLenum target = buffer.fetch_GLenum();
+	GLsizei width = buffer.fetch_GLsizei();
+	GLsizei height = buffer.fetch_GLsizei();
+	GLint stride = buffer.fetch_GLint();
+	GLenum format = buffer.fetch_GLenum();
+	GLuint pointer = buffer.fetch_GLuint();
+	DBG_PRINTV("(%d %d) %d %04x\n",width, height, stride, format);
+	unsigned int texture = (unsigned int)androidSharedMemory->getMappedAddress() + pointer;
+	DBG_PRINTV("texture pointer 0x%08x\n",texture);
+	//writeTexture(width, height, format, (unsigned char*)texture);
+	switch (format) {
+		case 1 :
+			glTexImage2D(target, 0,GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, (void*)texture);
+			break;
+		case 2 :
+			glTexImage2D(target, 0,GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, (void*)texture);
+			break;
+		case 4 :
+			glTexImage2D(target, 0,GL_RGBA, width, height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, (void*)texture);
+			break;
+
+	}
 }

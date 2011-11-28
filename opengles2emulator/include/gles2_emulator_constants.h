@@ -35,6 +35,8 @@
 #define CommandBufferSize 4096
 #define NumberCommandBuffers 2
 
+#define PREPROCESSOR_NAME "mcpp"
+
 /* IRQ function command list. Must match between Android and QEMU */
 enum sharedBuffer_commands {
 	VIRTUALDEVICE_INT_STATUS	= 0,
@@ -264,6 +266,16 @@ enum virtual_function{
 	GLREADPIXELS,
 	GLTEXPARAMETERFV,
 	GLTEXPARAMETERIV,
+	GLDISABLEVERTEXATTRIBARRAY,
+	GLDRAWTEXIOES,
+	GLDRAWTEXSOES,
+	//META commands not corresponding directly to GL commands	
+	SENDVERTEXATTRIBPOINTERDATA,
+	GLNATIVEIMAGE2D,
+
+
+	//GLES1 command that is easy to implement
+	GLTEXPARAMETERX	
 };
 
 

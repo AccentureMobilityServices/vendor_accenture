@@ -24,13 +24,13 @@ void GLproxyContext::createContext()
 	char buf[256];
 	sprintf(buf, "glcontext %08x\n", contextID);
 	windowID = glutCreateWindow(buf);
+	glutHideWindow();
 	glutDisplayFunc(displayfn);
 	glutReshapeFunc(reshapefn);
 	glClearColor(0,0,0,1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glutSwapBuffers();
-	if (!gShowWindow)
-		glutHideWindow();
+	glutHideWindow();
 }
 
 AttribPointer* GLproxyContext::findAttribute(GLint index, bool createNew) 
@@ -56,7 +56,7 @@ AttribPointer* GLproxyContext::findAttribute(GLint index, bool createNew)
 
 bool GLproxyContext::isContext(int contextID)
 {
-	return this->contextID == contextID;
+	return this->contextID == (unsigned int)contextID;
 }
 
 void GLproxyContext::switchToContext() 
@@ -64,17 +64,14 @@ void GLproxyContext::switchToContext()
 	glutSetWindow(windowID);
 }
 
-theSurfaceStruct* GLproxyContext::getSurface(int id)
+theSurfaceStruct* GLproxyContext::getSurface()
 {
-	if (id<0 || id>1) {
-		return NULL;
-	}
-	return &surfaces[id];
+	return &lastSurface;
 }
 
 void GLproxyContext::destroyContext() 
 {
-	DBG_PRINT("destroy window called\n");
+	DBGPRINT("destroy window called\n");
 	glutDestroyWindow(windowID);
 }
 

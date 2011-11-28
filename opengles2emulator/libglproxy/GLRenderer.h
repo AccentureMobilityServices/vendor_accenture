@@ -19,13 +19,11 @@
 #define GLRENDERER_H_
 #include "glheaders.h"
 #include "glproxy_context.h"
-#include "PosixSemaphore.h"
-#include "PosixSharedMemory.h"
+#include "SharedMemory.h"
 #include <string>
 #include <vector>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
+
+struct socketaddr_in;
 
 using namespace std;
 
@@ -66,7 +64,7 @@ class GLRenderer
 	int initializeSharedMemory();
 	void transferGLImageBufferFlipped_Y(char *addressBase, theSurfaceStruct *thisSurface);
 	GLfloat oneColour, xRotation, yRotation, zRotation;
-	PosixSharedMemory *theAndroidSharedMemory;
+	SharedMemory *theAndroidSharedMemory;
 	GLES2Parser* gl2parser;
 	ParserBuffer* buffer;
 	vector<GLproxyContext*> glcontexts;
@@ -77,7 +75,7 @@ class GLRenderer
 	void *theCopyBuffer;
 
 	int i, len, socketfd, acceptfd;
-	struct sockaddr_un saun;
+	struct sockaddr_in* saun;
 };
 
 #endif /* GLRENDERER_H_ */

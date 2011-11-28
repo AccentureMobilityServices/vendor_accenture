@@ -17,30 +17,20 @@
 
 #ifndef POSIXSHAREDMEMORY_H_
 #define POSIXSHAREDMEMORY_H_
+struct paramStruct;
 
-
-#include <sys/mman.h>
-#include <semaphore.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/stat.h>        /* For mode constants */
-#include <fcntl.h>           /* For O_* constants */
-#include <stdio.h>
-
-
-class PosixSharedMemory
+class SharedMemory
 {
 public:
-	PosixSharedMemory(const char *theSharedMemoryName);
-	virtual ~PosixSharedMemory();
+	SharedMemory(const char *theSharedMemoryName);
+	virtual ~SharedMemory();
+	bool initialised();
 	void mapMemory(int sizeToMap);
-	int GetSharedMemoryFileSize(int fileDescriptor);
+	int GetSharedMemoryFileSize();
 
-	int fileDescriptor;
-	void *mmappedAddress;
-
+	void* getMappedAddress();
 private:
-
+	paramStruct* params;
 };
 
 #endif /* POSIXSHAREDMEMORY_H_ */

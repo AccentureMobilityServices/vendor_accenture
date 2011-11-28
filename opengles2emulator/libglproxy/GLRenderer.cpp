@@ -20,14 +20,21 @@
 #include <stdlib.h>
 #ifdef __APPLE__
 #include <sched.h>
+#elif defined WIN32
 #else
 #include <pthread.h>
 #endif
 #include <unistd.h>
+#ifdef WIN32
+#include <winsock.h>
+#else
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <errno.h>
+#endif
 
 #include "glheaders.h"
 #include "GLRenderer.h"
@@ -40,44 +47,130 @@
 
 #define ADDRESS     "/tmp/glproxy-socket"  /* addr to connect */
 
+#ifdef WIN32
+bool isErrorRecoverable() {
+	int error = WSAGetLastError();
+	if (error == WSAEINTR) {
+		return true;
+	}
+	return false;
+}
+#else
+
+bool isErrorRecoverable() {
+	perror("recoverable?");
+	if (errno == EAGAIN || errno == EINTR) {
+		return true;
+	}
+	return false;
+}
+
+#endif
+
+int socketRead(int fd, char* ptr, int bytesToRead) {
+	int bytesRead = 0;
+	while (bytesToRead > 0) {
+		int bytes = recv(fd, ptr, bytesToRead, 0);
+		if (bytes==-1) {
+			if (isErrorRecoverable())
+				continue;
+			else {
+				bytesRead = -1;
+				break;
+			}
+		}
+		if (bytes==0) {
+			bytesRead = 0;
+			break;
+		}
+
+		bytesToRead -= bytes;
+		bytesRead += bytes;
+		ptr+= bytes;
+	}
+	return bytesRead;
+} 
+
+
+int socketWrite(int fd, char* ptr, int bytesToWrite) {
+	int bytesWritten = 0;
+	while (bytesToWrite > 0) {
+		int bytes = send(fd, ptr, bytesToWrite, 0);
+		if (bytes==-1) {
+			if (isErrorRecoverable())
+				continue;
+			else {
+				bytesWritten = -1;
+				break;
+			}
+		}
+
+		bytesToWrite -= bytes;
+		bytesWritten += bytes;
+		ptr+= bytes;
+	}
+	DBGPRINT(">>> socket write %d\n", bytesWritten);
+	return bytesWritten;
+} 
 
 GLRenderer::GLRenderer()
 {
 	if (initializeSharedMemory()==0) {
-		DBG_PRINT("All ok!\n");
+		DBGPRINT("All ok!\n");
 	} else {
-		DBG_PRINT("Error initializing Shared memory\n");
+		DBGPRINT("Error initializing Shared memory\n");
 	}
 
 	buffer = new ParserBuffer(100*1024);
 	gl2parser = new GLES2Parser(*buffer);
+	gl2parser->setSharedMemory(theAndroidSharedMemory);
 
 	socketfd = -1;
 	acceptfd = -1;
+
+#ifdef WIN32
+	WORD wVersionRequested;
+	WSADATA wsaData;
+
+	wVersionRequested = MAKEWORD(2,2);
+	int error = WSAStartup(wVersionRequested, &wsaData);
+	if (error != 0 ) {
+		printf("Could not start windows sockets\n");
+		exit(1);
+	}
+#endif
 
 }
 
 int GLRenderer::initializeSharedMemory() {
 	int fileSize;
 
-	theAndroidSharedMemory = new PosixSharedMemory("qemu_device_ram1");
-	if (theAndroidSharedMemory->fileDescriptor < 0)
+	theAndroidSharedMemory = new SharedMemory("qemu_device_ram1");
+	while (!theAndroidSharedMemory->initialised())
 	{
-		DBG_PRINT("Could not find Android shared memory file!\n");
-		return theAndroidSharedMemory->fileDescriptor;
+#ifdef WIN32
+		Sleep(1000);
+#else
+		sleep(1);
+#endif
+		delete theAndroidSharedMemory;
+		theAndroidSharedMemory = new SharedMemory("qemu_device_ram1");
+		DBGPRINT("waiting for android shared memory!\n");
 	}
 #ifdef __APPLE__
 	// temporary workaround - it isn't possible to open the shared memory as a file on macosx
 	fileSize = 100663296;
+#elif defined WIN32
+	fileSize = 100663296;
 #else
-	fileSize = theAndroidSharedMemory->GetSharedMemoryFileSize(theAndroidSharedMemory->fileDescriptor);
+	fileSize = theAndroidSharedMemory->GetSharedMemoryFileSize();
 #endif
 
-	DBG_PRINT("Mapping Android shared memory of size: %d\n", fileSize);
+	DBGPRINT("Mapping Android shared memory of size: %d\n", fileSize);
 	theAndroidSharedMemory->mapMemory(fileSize);
-	if (theAndroidSharedMemory->mmappedAddress < 0)
+	if (theAndroidSharedMemory->getMappedAddress() < 0)
 	{
-		DBG_PRINT("Could not mmap Android shared memory file!\n");
+		DBGPRINT("Could not mmap Android shared memory file!\n");
 		return -1;
 	}
 
@@ -131,7 +224,7 @@ void GLRenderer::deleteContext(int contextID)
 
 int GLRenderer::sendReturnReady(void* returnAddress)
 {
-	return write(acceptfd, &returnAddress, sizeof(void*)); 
+	return socketWrite(acceptfd,(char*) &returnAddress, sizeof(void*)); 
 }
 
 void GLRenderer::transferGLImageBufferFlipped_Y(char *addressBase, theSurfaceStruct *thisSurface)
@@ -150,7 +243,7 @@ void GLRenderer::transferGLImageBufferFlipped_Y(char *addressBase, theSurfaceStr
 
 	theCopyBuffer = realloc(theCopyBuffer, thisSurface->height*stride);
 	if (theCopyBuffer == NULL) {
-		DBG_PRINT("Could not allocate memory for image flip buffer!\n");
+		DBGPRINT("Could not allocate memory for image flip buffer!\n");
 		return;
 	}
 
@@ -166,21 +259,11 @@ void GLRenderer::transferGLImageBufferFlipped_Y(char *addressBase, theSurfaceStr
 
 }
 
-ssize_t socket_get_available(int socket_fd)
-{
-        int available = -1;
-        if (ioctl(socket_fd, FIONREAD, &available) < 0) {
-                return -1;
-        }
-
-        return (ssize_t) available;
-}
-
 void GLRenderer::GLEventLoop()
 {
 	if (socketfd == -1 ) 
 	{
-		if ((socketfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+		if ((socketfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 			perror("client: socket");
 			exit(1);
 		}
@@ -188,14 +271,17 @@ void GLRenderer::GLEventLoop()
 		unsigned int sendSize = SOCKET_SNDBUF_SIZE;
 		unsigned int recvSize = SOCKET_RCVBUF_SIZE;
 		
-		setsockopt(socketfd, SOL_SOCKET, SO_SNDBUF, (void *) &sendSize, sizeof(sendSize));
-		setsockopt(socketfd, SOL_SOCKET, SO_RCVBUF, (void *) &recvSize, sizeof(recvSize));
+		setsockopt(socketfd, SOL_SOCKET, SO_SNDBUF, (char *) &sendSize, sizeof(sendSize));
+		setsockopt(socketfd, SOL_SOCKET, SO_RCVBUF, (char *) &recvSize, sizeof(recvSize));
 
 		/*
 		 * Create the address we will be connecting to.
 		 */
-		saun.sun_family = AF_UNIX;
-		strcpy(saun.sun_path, ADDRESS);
+		saun = (sockaddr_in*)calloc(1, sizeof(sockaddr_in));
+		
+ 		saun->sin_family = AF_INET;
+		saun->sin_addr.s_addr = inet_addr("127.0.0.1");
+		saun->sin_port = 2222;
 
 		/*
 		 * Try to connect to the address.  For this to
@@ -207,13 +293,12 @@ void GLRenderer::GLEventLoop()
 		 * the structure, not just the length of the
 		 * socket name.
 		 */
-		len = sizeof(saun.sun_family) + strlen(saun.sun_path)+1;
-
-		unlink(ADDRESS);
+		len = sizeof(sockaddr_in);
 
 		int err;
-		err = bind(socketfd, (sockaddr*) &saun, len);
+		err = bind(socketfd, (sockaddr*) saun, len);
 		if (err < 0) {
+			perror("bind problem");
 			return;
 		}
 
@@ -221,59 +306,49 @@ void GLRenderer::GLEventLoop()
 		 * Listen on the socket.
 		 */
 		err = listen(socketfd, 5);
-
-		int flags = fcntl(socketfd, F_GETFL, 0);
-		fcntl(socketfd, F_SETFL, flags);// | O_NONBLOCK);
-
+		printf("listen on socket\n");
 
 	}
-	if (acceptfd == -1) {
-		struct sockaddr_un peer_addr;
+	while (acceptfd == -1) {
+		struct sockaddr_in peer_addr;
 		socklen_t fromlen = sizeof(peer_addr);
-		acceptfd = accept(socketfd, (sockaddr*)&saun, &fromlen);
-		DBG_PRINT("accept connection\n");
+		acceptfd = accept(socketfd, (sockaddr*)saun, &fromlen);
+		if (acceptfd != -1) {
+			printf("accept connection\n");
+		}
 	}
+	free(saun);
 	int bytesRead=0;
-	while (bytesRead>=0) {
-		while (socket_get_available(acceptfd)<=0) {
+	do {
 #ifdef __APPLE__
-			glutCheckLoop();
+		glutCheckLoop();
 #else
-			glutMainLoopEvent();
+		glutMainLoopEvent();
 #endif
-		} 
 		buffer->resetBuffer();
 		int bytesToRead = sizeof(command_control);
-		while (bytesToRead > 0) {
-			//DBG_PRINT("bytes to read %d\n", bytesToRead);
-			bytesRead = read(acceptfd, buffer->getBufferPointer(), bytesToRead);
-			bytesToRead -= bytesRead;
-			buffer->advance(bytesRead);
-		}
+		bytesRead = socketRead(acceptfd, buffer->getBufferPointer(), bytesToRead);
 		buffer->resetBuffer();
-		DBG_PRINT("bytes read %d\n", bytesRead);
+		DBGPRINT("bytes read %d\n", bytesRead);
 		if (bytesRead > 0) {
 			int magic = buffer->fetch_GLint();
 			int payloadSize = buffer->fetch_GLint();
 			int seqNumber = buffer->fetch_GLint();
-			DBG_PRINT("magic: %08x\n", magic);
+			DBGPRINT("magic: %08x\n", magic);
 			if (magic != 0x4703f322) {
-				DBG_PRINT ("error: header wrong: 0x%08x\n", magic);
+				DBGPRINT ("error: header wrong: 0x%08x\n", magic);
 				exit(0);
 			}
-			DBG_PRINT("payload size: %0d\n", payloadSize);
-			DBG_PRINT("seq #: %0d\n", seqNumber);
+			DBGPRINT("payload size: %0d\n", payloadSize);
+			DBGPRINT("seq #: %0d\n", seqNumber);
 			buffer->setBufferSize(payloadSize+sizeof(command_control));
 			buffer->resetBuffer();
 			buffer->advance(sizeof(command_control));
 			bytesToRead = payloadSize;
-			while (bytesToRead > 0) {
-				//DBG_PRINT("bytes to read %d\n", bytesToRead);
-				bytesRead = read(acceptfd, buffer->getBufferPointer(), bytesToRead);
-				bytesToRead -= bytesRead;
-				buffer->advance(bytesRead);
+			if (bytesToRead > 0) {
+				bytesRead = socketRead(acceptfd, buffer->getBufferPointer(), bytesToRead);
+				DBGPRINT("bytes read %d, payloadSize %d\n", bytesRead, payloadSize);
 			}
-			DBG_PRINT("bytes read %d, payloadSize %d\n", bytesRead, payloadSize);
 			buffer->resetBuffer();
 
 
@@ -292,16 +367,15 @@ void GLRenderer::GLEventLoop()
 					retries++;
 				}
 				if (retries>0) {
-					DBG_PRINT("resync shifted: %d\n", retries);
+					DBGPRINT("resync shifted: %d\n", retries);
 				} else {
-					DBG_PRINT("ok\n");
+					DBGPRINT("ok\n");
 				}
 				payloadSize = buffer->fetch_GLint();
 				int seqNumber = buffer->fetch_GLint();
 				cmd = buffer->fetch_GLint();
 				int contextID = buffer->fetch_GLint();
 				int retVal = buffer->fetch_GLint();
-				DBG_PRINT("context# %08x\n",contextID);
 				GLproxyContext* context = findContext(contextID);
 				context->switchToContext();
 
@@ -311,37 +385,37 @@ void GLRenderer::GLEventLoop()
 
 				if (retVal != 0)
 				{
-					DBG_PRINT("return value requested: 0x%x\n", retVal);
+					DBGPRINT("return value requested: 0x%x\n", retVal);
 					physAddress = (void *)retVal;
-					returnAddress = ((char*)(theAndroidSharedMemory->mmappedAddress))+retVal;
+					returnAddress = ((char*)(theAndroidSharedMemory->getMappedAddress()))+retVal;
 				}
 
 				if (virtualDeviceMagicNumber == GLES2_DEVICE_HEADER)
 				{
-					//DBG_PRINT("Current buffer pointer: %d\n", currentBufferPointer);
+					//DBGPRINT("Current buffer pointer: %d\n", currentBufferPointer);
 					switch (cmd)
 					{
 						case 1:
 							{
-								DBG_PRINT("Received GLES1 command.  Payload size: %d.  Parsing!\n", payloadSize);
+								DBGPRINT("Received GLES1 command.  Payload size: %d.  Parsing!\n", payloadSize);
 								break;
 							}
 						case 2:
 							{
-								DBG_PRINT("Received GLES2 command, payload size: %d\n", payloadSize);
+								DBGPRINT("Received GLES2 command, payload size: %d\n", payloadSize);
 								gl2parser->setContext(context);
 								gl2parser->parseGLES2Command(payloadSize, (void*)returnAddress);
 								if (returnAddress != NULL) {
-									DBG_PRINT("Sending return value: 0x%x\n", (unsigned int)physAddress);
+									DBGPRINT("Sending return value: 0x%x\n", (unsigned int)physAddress);
 									sendReturnReady(physAddress);
 								}
 								break;
 							}
 						case 3:
 							{
-								DBG_PRINT("Received EGL1.4 command, payload size: %d\n", payloadSize);
+								DBGPRINT("Received EGL1.4 command, payload size: %d\n", payloadSize);
 								subCommand = buffer->fetch_GLint();
-								DBG_PRINT("        Subcommand: %d\n", subCommand);
+								DBGPRINT("        Subcommand: %d\n", subCommand);
 
 								switch (subCommand)
 								{
@@ -350,14 +424,9 @@ void GLRenderer::GLEventLoop()
 											int whichSurface;
 
 											whichSurface = buffer->fetch_GLint();
-											theSurfaceStruct* surface = context->getSurface(whichSurface);
-											if (!surface )
-											{
-												DBG_PRINT("Surface out of range!  (%d)\n", whichSurface);
-												break;
-											}
+											theSurfaceStruct* surface = context->getSurface();
 
-
+											//printf("context# %08x - ",contextID);
 											surface->surfaceEnumerator = whichSurface;
 											surface->pid = buffer->fetch_GLint();
 											surface->surfacePhysicalAddress = buffer->fetch_GLint();
@@ -367,17 +436,11 @@ void GLRenderer::GLEventLoop()
 											surface->pixelFormat = buffer->fetch_GLint();
 											surface->pixelType = buffer->fetch_GLint();
 											surface->stride = buffer->fetch_GLint();
-											DBG_PRINT("Surface identifier: %d ,phys addr: 0x%x, width: %d, height: %d\n, stride: %d",
-													surface->surfaceEnumerator,
-													surface->surfacePhysicalAddress,
-													surface->width,
-													surface->height,
-													surface->stride);
 											break;
 										}
 									case EGL_DESTROYCONTEXT:
 										{
-											DBG_PRINT("destroy context\n");
+											DBGPRINT("destroy context\n");
 											deleteContext(contextID);
 										}
 										break;
@@ -386,26 +449,18 @@ void GLRenderer::GLEventLoop()
 											magicData = buffer->fetch_GLint();
 											surfaceEnumerator = buffer->fetch_GLint();
 
-											if (surfaceEnumerator > 1)
-											{
-												DBG_PRINT("Surface out of range!\n");
-												break;
-											}
-
-											theSurfaceStruct* surface = context->getSurface(surfaceEnumerator);
-											DBG_PRINT("        SYNC command, magic: 0x%x, surface number: 0x%x\n", magicData, surfaceEnumerator);
+											theSurfaceStruct* surface = context->getSurface();
+											DBGPRINT("        SYNC command, magic: 0x%x, surface number: 0x%x\n", magicData, surfaceEnumerator);
 
 											if (surface->surfacePhysicalAddress != 0)
 											{
-
-												transferGLImageBufferFlipped_Y( (char *)theAndroidSharedMemory->mmappedAddress, surface);
+												transferGLImageBufferFlipped_Y( (char *)theAndroidSharedMemory->getMappedAddress(), surface);
 												glutSwapBuffers();
-
-												if (returnAddress != NULL) {
-													*(int*)returnAddress = 12345;
-													DBG_PRINT("Sending return value: 0x%x\n", (unsigned int)physAddress);
-													sendReturnReady(physAddress);
-												}
+											}
+											if (returnAddress != NULL) {
+												*(int*)returnAddress = 12345;
+												DBG_PRINT("Sending return value: 0x%x\n", (unsigned int)physAddress);
+												sendReturnReady(physAddress);
 											}
 
 											break;
@@ -422,15 +477,15 @@ void GLRenderer::GLEventLoop()
 				}
 				else
 				{
-					DBG_PRINT("Command does not start with Magic Number!!! Ignoring the command\n");
+					DBGPRINT("Command does not start with Magic Number!!! Ignoring the command\n");
 				}
 			}
 
 		}
 
-	}
+	} while (bytesRead>0);
 	close(acceptfd);
-	DBG_PRINT("socket connection broken\n");
+	DBGPRINT("socket connection broken\n");
 	acceptfd = -1;
 
 }

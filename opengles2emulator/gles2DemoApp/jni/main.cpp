@@ -31,7 +31,7 @@ void setModel(const char* objFile);
 char* loadFromFile(const char* filename);
 float rotx, roty, rotz;
 
-void removeIncompatibleElement(char* shader, char* ident) {
+void removeIncompatibleElement(char* shader, const char* ident) {
 	char* replace;
 	while (replace = strstr(shader, ident)) {
 		memset(replace, ' ', strlen(ident));

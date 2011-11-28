@@ -48,6 +48,7 @@ int GLES2Parser::initOpenGLES2Parser(void)
 	}
 
 	parserGLES2FunctionPointers[GLCLEAR] = &GLES2Parser::parse_glClear;
+	parserGLES2FunctionPointers[GLFLUSH] = &GLES2Parser::parse_glFlush;
 	parserGLES2FunctionPointers[GLCLEARCOLORX] = &GLES2Parser::parse_glClearColorx;
 	parserGLES2FunctionPointers[GLCLEARCOLORF] = &GLES2Parser::parse_glClearColorf;
 	parserGLES2FunctionPointers[GLCREATEPROGRAM] = &GLES2Parser::parse_glCreateProgram;
@@ -55,11 +56,14 @@ int GLES2Parser::initOpenGLES2Parser(void)
 	parserGLES2FunctionPointers[GLSHADERSOURCE] = &GLES2Parser::parse_glShaderSource;
 	parserGLES2FunctionPointers[GLUSEPROGRAM] = &GLES2Parser::parse_glUseProgram;
 	parserGLES2FunctionPointers[GLVERTEXATTRIBPOINTER] = &GLES2Parser::parse_glVertexAttribPointer;
+	parserGLES2FunctionPointers[SENDVERTEXATTRIBPOINTERDATA] = &GLES2Parser::parse_sendVertexAttribPointer;
 	parserGLES2FunctionPointers[GLENABLEVERTEXATTRIBARRAY] = &GLES2Parser::parse_glEnableVertexAttribArray;
+	parserGLES2FunctionPointers[GLDISABLEVERTEXATTRIBARRAY] = &GLES2Parser::parse_glDisableVertexAttribArray;
 	parserGLES2FunctionPointers[GLATTACHSHADER] = &GLES2Parser::parse_glAttachShader;
 	parserGLES2FunctionPointers[GLLINKPROGRAM] = &GLES2Parser::parse_glLinkProgram;
 	parserGLES2FunctionPointers[GLGETPROGRAMINFOLOG] = &GLES2Parser::parse_glGetProgramInfoLog;
 	parserGLES2FunctionPointers[GLDELETEPROGRAM] = &GLES2Parser::parse_glDeleteProgram;
+	parserGLES2FunctionPointers[GLDELETESHADER] = &GLES2Parser::parse_glDeleteShader;
 	parserGLES2FunctionPointers[GLGETATTRIBLOCATION] = &GLES2Parser::parse_glGetAttribLocation;
 	parserGLES2FunctionPointers[GLCOMPILESHADER] = &GLES2Parser::parse_glCompileShader;
 	parserGLES2FunctionPointers[GLDRAWARRAYS] = &GLES2Parser::parse_glDrawArrays;
@@ -94,21 +98,21 @@ int GLES2Parser::initOpenGLES2Parser(void)
 	parserGLES2FunctionPointers[GLDEPTHMASK] = &GLES2Parser::parse_glDepthMask;
 	parserGLES2FunctionPointers[GLDEPTHRANGEF] = &GLES2Parser::parse_glDepthRangef;
 	parserGLES2FunctionPointers[GLDETACHSHADER] = &GLES2Parser::parse_glDetachShader;
-	//parserGLES2FunctionPointers[GLDISABLEVERTEXATTRIBARRAY] = &GLES2Parser::parse_glDisableVertexAttribArray;
+	parserGLES2FunctionPointers[GLDISABLEVERTEXATTRIBARRAY] = &GLES2Parser::parse_glDisableVertexAttribArray;
 	parserGLES2FunctionPointers[GLFRAMEBUFFERRENDERBUFFER] = &GLES2Parser::parse_glFramebufferRenderbuffer;
 	parserGLES2FunctionPointers[GLGENBUFFERS] = &GLES2Parser::parse_glGenBuffers;
 	parserGLES2FunctionPointers[GLGENERATEMIPMAP] = &GLES2Parser::parse_glGenerateMipmap;
 	parserGLES2FunctionPointers[GLGENFRAMEBUFFERS] = &GLES2Parser::parse_glGenFramebuffers;
 	parserGLES2FunctionPointers[GLGENRENDERBUFFERS] = &GLES2Parser::parse_glGenRenderbuffers;
-	//parserGLES2FunctionPointers[GLGETACTIVEATTRIB] = &GLES2Parser::parse_glGetActiveAttrib;
-	//parserGLES2FunctionPointers[GLGETACTIVEUNIFORM] = &GLES2Parser::parse_glGetActiveUniform;
+	parserGLES2FunctionPointers[GLGETACTIVEATTRIB] = &GLES2Parser::parse_glGetActiveAttrib;
+	parserGLES2FunctionPointers[GLGETACTIVEUNIFORM] = &GLES2Parser::parse_glGetActiveUniform;
 	//parserGLES2FunctionPointers[GLGETATTACHEDSHADERS] = &GLES2Parser::parse_glGetAttachedShaders;
 	parserGLES2FunctionPointers[GLGETBOOLEANV] = &GLES2Parser::parse_glGetBooleanv;
 	//parserGLES2FunctionPointers[GLGETBUFFERPARAMETERIV] = &GLES2Parser::parse_glGetBufferParameteriv;
 	//parserGLES2FunctionPointers[GLGETFLOATV] = &GLES2Parser::parse_glGetFloatv;
-	/*parserGLES2FunctionPointers[GLGETFRAMEBUFFERATTACHMENTPARAMETERIV] = &GLES2Parser::parse_glGetFramebufferAttachmentParameteriv;
-	parserGLES2FunctionPointers[GLGETINTEGERV] = &GLES2Parser::parse_glGetIntegerv;
-	parserGLES2FunctionPointers[GLGETRENDERBUFFERPARAMETERIV] = &GLES2Parser::parse_glGetRenderbufferParameteriv;
+	//parserGLES2FunctionPointers[GLGETFRAMEBUFFERATTACHMENTPARAMETERIV] = &GLES2Parser::parse_glGetFramebufferAttachmentParameteriv;
+	parserGLES2FunctionPointers[GLGETINTEGERRV] = &GLES2Parser::parse_glGetIntegerv;
+	/*parserGLES2FunctionPointers[GLGETRENDERBUFFERPARAMETERIV] = &GLES2Parser::parse_glGetRenderbufferParameteriv;
 	parserGLES2FunctionPointers[GLGETSHADERPRECISIONFORMAT] = &GLES2Parser::parse_glGetShaderPrecisionFormat;
 	parserGLES2FunctionPointers[GLGETSHADERSOURCE] = &GLES2Parser::parse_glGetShaderSource;
 	parserGLES2FunctionPointers[GLGETTEXPARAMETERFV] = &GLES2Parser::parse_glGetTexParameterfv;
@@ -139,10 +143,11 @@ int GLES2Parser::initOpenGLES2Parser(void)
 	//parserGLES2FunctionPointers[GLSTENCILOPERATE] = &GLES2Parser::parse_glStencilOpSeparate;
 	parserGLES2FunctionPointers[GLTEXIMAGE2D] = &GLES2Parser::parse_glTexImage2D;
 	parserGLES2FunctionPointers[GLTEXPARAMETERF] = &GLES2Parser::parse_glTexParameterf;
+	parserGLES2FunctionPointers[GLTEXPARAMETERX] = &GLES2Parser::parse_glTexParameterx;
 	//parserGLES2FunctionPointers[GLTEXPARAMETERFV] = &GLES2Parser::parse_glTexParameterfv;
 	parserGLES2FunctionPointers[GLTEXPARAMETERI] = &GLES2Parser::parse_glTexParameteri;
-	//parserGLES2FunctionPointers[GLTEXPARAMETERIV] = &GLES2Parser::parse_glTexParameteriv;
-	//parserGLES2FunctionPointers[GLTEXSUBIMAGE2D] = &GLES2Parser::parse_glTexSubImage2D;
+	parserGLES2FunctionPointers[GLTEXPARAMETERIV] = &GLES2Parser::parse_glTexParameteriv;
+	parserGLES2FunctionPointers[GLTEXSUBIMAGE2D] = &GLES2Parser::parse_glTexSubImage2D;
 	parserGLES2FunctionPointers[GLUNIFORM1F] = &GLES2Parser::parse_glUniform1f;
 	parserGLES2FunctionPointers[GLUNIFORM1FV] = &GLES2Parser::parse_glUniform1fv;
 	parserGLES2FunctionPointers[GLUNIFORM1I] = &GLES2Parser::parse_glUniform1i;
@@ -182,6 +187,8 @@ int GLES2Parser::initOpenGLES2Parser(void)
 	parserGLES2FunctionPointers[GLGETPROGRAMIV] = &GLES2Parser::parse_glGetProgramiv;
 	parserGLES2FunctionPointers[GLFRONTFACE] = &GLES2Parser::parse_glFrontFace;
 	parserGLES2FunctionPointers[GLCULLFACE] = &GLES2Parser::parse_glCullFace;
+	parserGLES2FunctionPointers[GLDRAWTEXIOES] = &GLES2Parser::parse_glDrawTexiOES;
+	parserGLES2FunctionPointers[GLNATIVEIMAGE2D] = &GLES2Parser::parse_glNativeImage2D;
 	return 0;
 
 }
@@ -191,7 +198,7 @@ void GLES2Parser::setContext(GLproxyContext* context)
 	theContext = context;
 }
 
-int GLES2Parser::parseGLES2Command(int payloadSize, void* returnAddress)
+void GLES2Parser::parseGLES2Command(int payloadSize, void* returnAddress)
 {
 	int theGLCommandToProcess;
 	this->returnAddress = returnAddress;
@@ -201,15 +208,14 @@ int GLES2Parser::parseGLES2Command(int payloadSize, void* returnAddress)
 	buffer.markPos();
 
 	DBG_PRINT("(%s)  Command: %d]\n", __FUNCTION__, theGLCommandToProcess);
-	int ret = -1;
 	if (theGLCommandToProcess < NUMBER_OF_GLES2_POINTERS)
 	{
 		multifp func = parserGLES2FunctionPointers[theGLCommandToProcess];
-		ret = (this->*func)();
+		(this->*func)();
+		this->showError();
 		buffer.returnToMark();
 		buffer.advance(payloadSize);
 	}
-	return ret;
 }
 
 

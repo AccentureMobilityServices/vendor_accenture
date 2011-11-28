@@ -16,60 +16,51 @@
 */
 
 #include "SharedMemory.h"
-#include <sys/mman.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/stat.h>        /* For mode constants */
-#include <fcntl.h>           /* For O_* constants */
-#include <stdio.h>
+#include <windows.h>
 
 struct paramStruct {
 	paramStruct() {
-		fileDescriptor = -1;
-		mapAddress = 0;
+		hMem = NULL;
+		mapAddress = NULL;
 	}
-
-	int fileDescriptor;
+	HANDLE hMem;
 	void* mapAddress;
 };
 
 SharedMemory::SharedMemory(const char *theSharedMemoryName)
 {
 	params = new paramStruct;
-	params->fileDescriptor = shm_open (theSharedMemoryName, (O_RDWR), (ALLPERMS));
+	params->hMem = OpenFileMapping(
+			FILE_MAP_ALL_ACCESS,   // read/write access
+			FALSE,                 // do not inherit the name
+			theSharedMemoryName);               // name of mapping object
+}
+
+bool SharedMemory::initialised() 
+{
+	return params->hMem!=NULL;
 }
 
 SharedMemory::~SharedMemory()
 {
-
+	UnmapViewOfFile(params->mapAddress);
+	CloseHandle(params->hMem);
 }
 
 void SharedMemory::mapMemory(int sizeToMap)
 {
-	params->mapAddress = mmap (0, sizeToMap, PROT_READ | PROT_WRITE, MAP_SHARED, params->fileDescriptor, 0);
-
+	params->mapAddress = MapViewOfFile(params->hMem, // handle to map object
+               FILE_MAP_ALL_ACCESS,  // read/write permission
+               0,
+               0,
+               sizeToMap);
 }
 
-bool SharedMemory::initialised()
-{
-	return params->fileDescriptor > 0;
-}
-
-void* SharedMemory::getMappedAddress() 
-{
+void* SharedMemory::getMappedAddress() {
 	return params->mapAddress;
 }
 
 int SharedMemory::GetSharedMemoryFileSize()
 {
-int theFileSize;
-FILE *theFile;
-
-
-	theFile = fdopen(params->fileDescriptor, "rw");
-	fseek(theFile, 0L, SEEK_END);
-	theFileSize = ftell(theFile);
-	fseek(theFile, 0, SEEK_SET);
-
-	return theFileSize;
+	return -1;
 }

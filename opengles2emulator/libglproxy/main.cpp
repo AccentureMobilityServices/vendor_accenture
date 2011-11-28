@@ -16,7 +16,6 @@
 */
 
 
-#include <unistd.h>
 #include "GLRenderer.h"
 #include <unistd.h>
 #include "glheaders.h" 
@@ -29,7 +28,7 @@ extern "C" void startGLProxy(void *);
 void idlefunc() {
 }
 
-void startGLProxy (void*)  
+void startGLProxy ()  
 {
 	render = new GLRenderer();
 	
@@ -42,6 +41,10 @@ void startGLProxy (void*)
 	glutInitWindowSize  ( 320, 480 ); 
 	glutIdleFunc(idlefunc);
 	render->GLEventLoop();
+}
+
+int main(int argc, char** argv) {
+	startGLProxy();
 }
 
 

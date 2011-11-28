@@ -18,11 +18,13 @@
 #ifndef __DEBUG_H__
 #define __DEBUG_H__
 
+#define DBGPRINT(...) ((void)0)
 #define DBG_PRINT(...) ((void)0)
-//#define DBG_PRINT printf
-
+//#define DBGPRINT printf
+//#define DBG_PRINT printf("context: %08x ",(unsigned int)theContext);printf
+//#define VERBOSE
 #ifdef VERBOSE
-#define DBG_PRINTV printf
+#define DBG_PRINTV printf("context: %08x ",(unsigned int)theContext);printf
 #else
 #define DBG_PRINTV
 #endif
